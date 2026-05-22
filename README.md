@@ -6,13 +6,20 @@
 ## 启动
 
 ```bash
-npm install      # 或 pnpm install / yarn
-npm run dev      # 默认 http://localhost:3000
+npm install            # 或 pnpm / yarn
+npm run dev            # mock 模式（默认，无需后端）
+npm run dev:live       # live 模式 · 接入真实 Go 网关
 npm run typecheck
 npm run build && npm run start
 ```
 
-Node ≥ 18.17。首次启动 Monaco 与 ECharts 会按需懒加载，无需额外配置。
+Node ≥ 18.17。首次启动 Monaco 与 ECharts 会按需懒加载。
+
+### 接入真实后端
+
+复制 `.env.example` 为 `.env.local`，把 `NEXT_PUBLIC_DATA_MODE` 改为 `live` 并填写 `NEXT_PUBLIC_API_BASE_URL`。详尽指南见 **[`docs/INTEGRATION.md`](./docs/INTEGRATION.md)**（包含完整 API 契约、SSE 事件协议、各模块迁移配方、错误降级策略）。
+
+进阶面板在生产环境下的演进路径（认知拓扑引擎、召回 X 光机），见 **[`docs/PRODUCTION_ROADMAP.md`](./docs/PRODUCTION_ROADMAP.md)**。
 
 ## 模块地图
 

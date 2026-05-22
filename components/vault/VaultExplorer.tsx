@@ -2,6 +2,8 @@
 
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOCK_MEMORIES } from '@/lib/mocks/memories';
+import { useVaultMemories } from '@/lib/api/hooks';
+import { DATA_MODE } from '@/lib/api/config';
 import { Chip } from '@/components/ui/Chip';
 import type { MemoryCategory, MemoryRecord } from '@/lib/types';
 
@@ -44,25 +46,15 @@ export function VaultExplorer() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // Agent 列表始终基于 mock 静态值（live 模式下应改为 useAgents() hook）
   const agents = useMemo(
     () => ['全部', ...Array.from(new Set(MOCK_MEMORIES.map((m) => m.agentId)))],
     [],
   );
 
-  const filtered = useMemo(() => {
-    const needle = q.trim().toLowerCase();
-    return MOCK_MEMORIES.filter((m) => {
-      if (category !== '全部' && m.category !== category) return false;
-      if (agent !== '全部' && m.agentId !== agent) return false;
-      if (!needle) return true;
-      return (
-        m.summary.toLowerCase().includes(needle) ||
-        m.tags.some((t) => t.toLowerCase().includes(needle)) ||
-        m.triggers.some((t) => t.toLowerCase().includes(needle)) ||
-        m.sessionId.toLowerCase().includes(needle)
-      );
-    });
-  }, [q, category, agent]);
+  // 走数据层 hook：mock 模式返回本地过滤；live 模式发起 REST 请求
+  const { data, isLoading, error } = useVaultMemories({ q, category, agent });
+  const filtered = data?.items ?? [];
 
   return (
     <div className="mx-auto max-w-7xl px-6">
@@ -125,9 +117,18 @@ export function VaultExplorer() {
           ))}
         </select>
 
-        <span className="ml-auto hm-subtle text-[12.5px]">
-          共 <b className="text-ink-primary dark:text-ink-inverse">{filtered.length}</b> 条记忆
-        </span>
+        <div className="ml-auto flex items-center gap-3 hm-subtle text-[12.5px]">
+          <Chip variant={DATA_MODE === 'live' ? 'accent' : 'default'}>
+            {DATA_MODE === 'live' ? 'LIVE · Go 网关' : 'MOCK · 本地数据'}
+          </Chip>
+          {isLoading && <span className="animate-pulse">加载中…</span>}
+          {error && (
+            <span className="text-signal-danger">接口异常 · 已使用空集合</span>
+          )}
+          <span>
+            共 <b className="text-ink-primary dark:text-ink-inverse">{filtered.length}</b> 条记忆
+          </span>
+        </div>
       </div>
 
       {/* 数据网格 */}
@@ -170,8 +171,13 @@ export function VaultExplorer() {
               </div>
             </button>
           ))}
-          {!filtered.length && (
-            <div className="py-16 text-center hm-subtle text-[14px]">没有匹配的记忆。</div>
+          {!filtered.length && !isLoading && (
+            <div className="py-16 text-center hm-subtle text-[14px]">
+              {error ? '接口返回异常，请检查 Go 网关或回退至 mock 模式。' : '没有匹配的记忆。'}
+            </div>
+          )}
+          {!filtered.length && isLoading && (
+            <div className="py-16 text-center hm-subtle text-[14px]">正在从数据源拉取记忆…</div>
           )}
         </div>
       </div>
