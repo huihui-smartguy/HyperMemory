@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOCK_MEMORIES } from '@/lib/mocks/memories';
 import { Chip } from '@/components/ui/Chip';
 import type { MemoryCategory, MemoryRecord } from '@/lib/types';
@@ -21,6 +21,28 @@ export function VaultExplorer() {
   const [category, setCategory] = useState<'全部' | MemoryCategory>('全部');
   const [agent, setAgent] = useState<string>('全部');
   const [active, setActive] = useState<MemoryRecord | null>(null);
+  const [isMac, setIsMac] = useState(false);
+  const inputRef = useRef<HTMLInputElement>(null);
+
+  // 仅在客户端检测，避免 SSR/CSR 不一致；默认 Windows/Linux 视角 (isMac=false)。
+  useEffect(() => {
+    const ua = navigator.userAgent || '';
+    const platform = (navigator as Navigator & { userAgentData?: { platform?: string } })
+      .userAgentData?.platform || navigator.platform || '';
+    setIsMac(/Mac|iPhone|iPad|iPod/i.test(platform) || /Macintosh/i.test(ua));
+  }, []);
+
+  // 全局快捷键：⌘K / Ctrl+K 聚焦搜索框。
+  useEffect(() => {
+    const onKey = (e: KeyboardEvent) => {
+      if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'k') {
+        e.preventDefault();
+        inputRef.current?.focus();
+      }
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
 
   const agents = useMemo(
     () => ['全部', ...Array.from(new Set(MOCK_MEMORIES.map((m) => m.agentId)))],
@@ -48,12 +70,29 @@ export function VaultExplorer() {
       <div className="hm-card p-1.5 mb-6 flex items-center gap-2 shadow-floating">
         <span className="pl-4 pr-1 hm-subtle">⌕</span>
         <input
+          ref={inputRef}
           value={q}
           onChange={(e) => setQ(e.target.value)}
           placeholder="搜索记忆 · 标签 · 触发场景 · Session ID …"
           className="flex-1 bg-transparent outline-none text-[15px] py-3 placeholder:text-ink-tertiary"
         />
-        <kbd className="hm-chip mr-3">⌘ K</kbd>
+        <kbd
+          className="hm-chip mr-3 font-medium gap-1"
+          title={isMac ? '⌘ + K · 聚焦搜索' : 'Ctrl + K · 聚焦搜索'}
+        >
+          {isMac ? (
+            <>
+              <span aria-label="Command">⌘</span>
+              <span>K</span>
+            </>
+          ) : (
+            <>
+              <span aria-label="Ctrl">Ctrl</span>
+              <span className="opacity-50">+</span>
+              <span>K</span>
+            </>
+          )}
+        </kbd>
       </div>
 
       {/* 筛选条 */}

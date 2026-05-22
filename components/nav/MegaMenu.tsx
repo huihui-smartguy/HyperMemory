@@ -99,7 +99,7 @@ export function MegaMenu() {
             href="/"
             className="flex items-center gap-2 text-[15px] font-semibold tracking-apple"
           >
-            <span className="inline-block w-2 h-2 rounded-full bg-accent" />
+            <BrainstormGlyph />
             HyperMemory
           </Link>
 
@@ -207,5 +207,39 @@ export function MegaMenu() {
         )}
       </AnimatePresence>
     </header>
+  );
+}
+
+/**
+ * 思维节点网络图标 · 呼应 HyperMemory 的记忆图谱与头脑风暴语义。
+ * 中心实心节点 + 四周空心节点 + 细线连接，符合 Apple 极简线条 + 单一强调色。
+ */
+function BrainstormGlyph() {
+  return (
+    <svg
+      viewBox="0 0 24 24"
+      width="18"
+      height="18"
+      fill="none"
+      stroke="currentColor"
+      strokeWidth="1.5"
+      strokeLinecap="round"
+      strokeLinejoin="round"
+      className="text-accent"
+      aria-hidden="true"
+    >
+      {/* 连接线（绘制在节点下层） */}
+      <line x1="6.4" y1="6" x2="9.9" y2="10" />
+      <line x1="17.6" y1="6.8" x2="14.2" y2="10.3" />
+      <line x1="6.9" y1="17.8" x2="10.1" y2="14" />
+      <line x1="17.6" y1="17" x2="14.1" y2="13.8" />
+      {/* 中心实心节点 */}
+      <circle cx="12" cy="12" r="2.6" fill="currentColor" stroke="none" />
+      {/* 四周空心节点 */}
+      <circle cx="5" cy="5" r="1.45" />
+      <circle cx="19" cy="6" r="1.45" />
+      <circle cx="6" cy="19" r="1.45" />
+      <circle cx="19" cy="18" r="1.45" />
+    </svg>
   );
 }
