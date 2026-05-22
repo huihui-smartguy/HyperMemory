@@ -216,3 +216,25 @@ __marimo__/
 
 # Streamlit
 .streamlit/secrets.toml
+
+# 例外：项目根目录的 lib/ 是前端源码，不属于 Python 构建产物
+!/lib/
+!/lib/**
+
+# Node / Next.js
+node_modules/
+.next/
+out/
+dist/
+build/
+.vercel
+.turbo
+*.tsbuildinfo
+next-env.d.ts
+.pnp.*
+.yarn/
+package-lock.json
+yarn.lock
+pnpm-lock.yaml
+.DS_Store
+
