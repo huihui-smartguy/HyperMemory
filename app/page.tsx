@@ -51,7 +51,7 @@ export default function HomePage() {
       {/* Hero */}
       <section className="mx-auto max-w-7xl px-6 pt-24 pb-32 animate-rise">
         <div className="text-[12px] font-medium tracking-[0.2em] uppercase text-accent">
-          Enterprise Memory · TPO + DPO Dual Engine
+          Enterprise Memory · Modeling · Adaptive Recall · Self-Evolving Schema
         </div>
         <h1 className="mt-5 text-[64px] md:text-[88px] font-semibold leading-[0.98] tracking-apple">
           让 Agent 的<br />
@@ -59,7 +59,7 @@ export default function HomePage() {
         </h1>
         <p className="mt-8 max-w-2xl text-[20px] md:text-[22px] leading-relaxed hm-subtle font-light">
           HyperMemory 是面向大模型智能体的企业级元认知中枢。
-          搜推问一体化、TPO 推理期偏好优化、Schema 自主进化 —— 全部以极简白盒方式呈现。
+          原始记忆摄入、结构化记忆建模、自适应多路召回、Schema 自主进化 —— 全部以极简白盒方式呈现。
         </p>
         <div className="mt-10 flex flex-wrap items-center gap-3">
           <Link href="/basic/vault" className="hm-btn">
