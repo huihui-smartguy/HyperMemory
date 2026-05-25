@@ -20,6 +20,15 @@
   --hm-hairline: rgba(255, 255, 255, 0.1);
 }
 
+html {
+  /*
+    scrollbar-gutter: stable — 在 Windows Chrome 等显示原生滚动条的浏览器上，
+    始终为滚动条预留固定宽度（约 15-17 px）；macOS overlay 滚动条不受影响。
+    可防止页面在出现/消失滚动条时发生水平布局抖动，同时消除跨平台宽度差异。
+  */
+  scrollbar-gutter: stable;
+}
+
 html,
 body {
   background: var(--hm-canvas);
