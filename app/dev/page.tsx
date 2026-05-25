@@ -53,7 +53,7 @@ const SSE_EVENTS = [
   { event: 'schema_diff', desc: '推理终态，下发 old/new Markdown + status。' },
 ];
 
-export const metadata = { title: '开发者中心 · HyperMemory' };
+export const metadata = { title: '开发者中心 · NovaMem' };
 
 export default function DevCenterPage() {
   return (
@@ -61,7 +61,7 @@ export default function DevCenterPage() {
       <PageHeader
         eyebrow="工程入口"
         title="开发者中心"
-        description="租户上下文、TraceID、API 契约、SSE 事件协议与降级策略 — 工程师对接 HyperMemory 的全部入口。"
+        description="租户上下文、TraceID、API 契约、SSE 事件协议与降级策略 — 工程师对接 NovaMem 的全部入口。"
       />
 
       <div className="mx-auto max-w-7xl px-6 space-y-6">

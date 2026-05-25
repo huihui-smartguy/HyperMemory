@@ -1,0 +1,37 @@
+# ================================================================
+# NovaMem Dashboard · 开发 / 演示环境
+# ================================================================
+# 用法：
+#   docker compose up            # 构建并启动（含内置 mock 后端，零外部依赖）
+#   docker compose up --build    # 强制重新构建镜像
+#   docker compose down          # 停止并移除容器
+#
+# 访问：
+#   http://localhost:3000        # NovaMem 控制台
+#   http://localhost:3000/api/v1/health  # 健康检查
+# ================================================================
+
+services:
+  novamem-ui:
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_DATA_MODE: bff
+        NEXT_PUBLIC_SSE_LIVE: "true"
+        NEXT_PUBLIC_MOCK_LATENCY_MS: "80"
+    image: novamem-ui:dev
+    container_name: novamem-ui
+    ports:
+      - "3000:3000"
+    environment:
+      # BFF_USE_MOCK_BACKEND=1：BFF 层内部短路，不需要真实 NovaMem 后端
+      # 修改为 0 并配置 NOVAMEM_BASE_URL 即可接真实后端
+      BFF_USE_MOCK_BACKEND: "1"
+      NOVAMEM_BASE_URL: "http://localhost:8001"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

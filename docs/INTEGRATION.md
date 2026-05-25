@@ -1,6 +1,6 @@
-# HyperMemory · 前后端对接文档
+# NovaMem · 前后端对接文档
 
-> 本文档面向工程师，详尽说明 HyperMemory 前端面板如何从 mock 模式切换到 live 模式接入真实后端、各模块的接口契约、SSE/WS 流转规范、错误降级与多租户/链路追踪机制。
+> 本文档面向工程师，详尽说明 NovaMem 前端面板如何从 mock 模式切换到 live 模式接入真实后端、各模块的接口契约、SSE/WS 流转规范、错误降级与多租户/链路追踪机制。
 >
 > 配套基线：《前端面板需求设计文档》《业务架构设计文档》《技术架构设计文档》。
 
@@ -210,7 +210,7 @@ NEXT_PUBLIC_MOCK_LATENCY_MS=180
 
 ```
 ┌────────────────────────────────────────────────────────────┐
-│  HyperMemory Frontend (Next.js)                            │
+│  NovaMem Frontend (Next.js)                            │
 │                                                            │
 │   组件 ─→ lib/api/hooks (SWR)                             │
 │             │                                              │

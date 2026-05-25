@@ -4,9 +4,9 @@ import { MegaMenu } from '@/components/nav/MegaMenu';
 import { ThemeBoot } from '@/components/nav/ThemeBoot';
 
 export const metadata: Metadata = {
-  title: 'HyperMemory · 企业级记忆系统',
+  title: 'NovaMem · 企业级记忆系统',
   description:
-    'HyperMemory 是面向大模型 Agent 的企业级元认知记忆中枢，提供原始记忆摄入、结构化记忆建模、自适应多路召回与 Schema 自主进化能力。',
+    'NovaMem 是面向大模型 Agent 的企业级元认知记忆中枢，提供原始记忆摄入、结构化记忆建模、自适应多路召回与 Schema 自主进化能力。',
 };
 
 // 在 hydration 之前同步应用主题，避免「浅色用户首屏看到一瞬深色」的 FOUC。
@@ -39,7 +39,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         <main className="pt-14">{children}</main>
         <footer className="mt-24 border-t hm-hairline">
           <div className="mx-auto max-w-7xl px-6 py-10 text-xs hm-subtle">
-            HyperMemory © {new Date().getFullYear()} · 企业级智能体元认知记忆中枢
+            NovaMem © {new Date().getFullYear()} · 企业级智能体元认知记忆中枢
           </div>
         </footer>
       </body>

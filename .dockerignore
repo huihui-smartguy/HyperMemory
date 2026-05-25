@@ -1,0 +1,41 @@
+# ---- 构建产物（每次 build 重新生成）----
+.next/
+out/
+
+# ---- 依赖（容器内重装）----
+node_modules/
+
+# ---- 本地环境配置（不得进入镜像，防密钥泄漏）----
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+
+# ---- Git 元数据 ----
+.git/
+.gitignore
+.gitattributes
+
+# ---- 开发工具 & IDE ----
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# ---- 测试产物 ----
+coverage/
+
+# ---- 文档（可选，减小镜像大小）----
+# docs/
+# README.md
+
+# ---- Docker 自身（避免循环复制）----
+Dockerfile
+.dockerignore
+docker-compose*.yml
+
+# ---- 其他 ----
+*.log
+.DS_Store
+Thumbs.db

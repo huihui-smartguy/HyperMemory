@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { RetrievalXRay } from '@/components/xray/RetrievalXRay';
 
-export const metadata = { title: '召回 X 光机 · HyperMemory' };
+export const metadata = { title: '召回 X 光机 · NovaMem' };
 
 export default function XRayPage() {
   return (

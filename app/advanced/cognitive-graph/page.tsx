@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { GraphPanels } from '@/components/graph/GraphPanels';
 
-export const metadata = { title: '认知拓扑引擎 · HyperMemory' };
+export const metadata = { title: '认知拓扑引擎 · NovaMem' };
 
 export default function CognitiveGraphPage() {
   return (
