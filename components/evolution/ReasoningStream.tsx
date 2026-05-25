@@ -1,54 +1,130 @@
 'use client';
 
 import { useEffect, useRef, useState } from 'react';
+import { ENDPOINTS, SSE_LIVE } from '@/lib/api/config';
 
 interface Props {
-  chunks: string[];
+  /** mock 模式 / SSE 失败时使用的本地 chunks 兜底（按段输出） */
+  fallbackChunks?: string[];
+  /** 用于 SSE 过滤事件 payload 中的 draftId（可选） */
+  draftNodeId?: string;
   intervalMs?: number;
   charMs?: number;
 }
 
-// 模拟 SSE 打字机：逐字符吐出，单次播放结束后停留终态；用户可手动重播。
-// 容器固定高度避免内容增长导致整页 Layout Shift。
-export function ReasoningStream({ chunks, intervalMs = 700, charMs = 22 }: Props) {
-  const [chunkIdx, setChunkIdx] = useState(0);
-  const [charIdx, setCharIdx] = useState(0);
-  const [done, setDone] = useState(false);
+type RunState = 'connecting' | 'streaming' | 'done' | 'error';
+
+export function ReasoningStream({
+  fallbackChunks = [],
+  draftNodeId,
+  intervalMs = 700,
+  charMs = 22,
+}: Props) {
+  const [lines, setLines] = useState<string[]>([]);
+  const [typing, setTyping] = useState('');
+  const [state, setState] = useState<RunState>('connecting');
+  const [transport, setTransport] = useState<'sse' | 'local' | 'idle'>('idle');
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  useEffect(() => {
-    if (done) return;
-
-    if (chunkIdx >= chunks.length) {
-      setDone(true);
-      return;
-    }
-    const current = chunks[chunkIdx];
-    if (charIdx < current.length) {
-      const t = setTimeout(() => setCharIdx(charIdx + 1), charMs);
-      return () => clearTimeout(t);
-    }
-    const t = setTimeout(() => {
-      setChunkIdx(chunkIdx + 1);
-      setCharIdx(0);
-    }, intervalMs);
-    return () => clearTimeout(t);
-  }, [chunkIdx, charIdx, done, chunks, intervalMs, charMs]);
-
-  // 内容追加时，平滑滚动到底部 —— 仅滚动内部容器，不影响外部页面。
+  // 内容追加时自动滚到底部
   useEffect(() => {
     const el = scrollRef.current;
     if (el) el.scrollTop = el.scrollHeight;
-  }, [chunkIdx, charIdx]);
+  }, [lines, typing]);
 
-  const replay = () => {
-    setDone(false);
-    setChunkIdx(0);
-    setCharIdx(0);
-  };
+  /* ---------- 真实 SSE 通道 (bff/live + SSE_LIVE) ---------- */
+  useEffect(() => {
+    if (!SSE_LIVE) return; // 走本地模拟
+    setTransport('sse');
+    setState('connecting');
+    setLines([]);
+    setTyping('');
 
-  const rendered = chunks.slice(0, chunkIdx);
-  const typing = chunkIdx < chunks.length ? chunks[chunkIdx].slice(0, charIdx) : '';
+    let buf = '';
+    const sse = new EventSource(ENDPOINTS.schema.stream, { withCredentials: true });
+
+    sse.addEventListener('surprise_alert', () => {
+      setState('streaming');
+    });
+
+    sse.addEventListener('reasoning_chunk', (e: MessageEvent) => {
+      try {
+        const payload = JSON.parse(e.data) as { chunk: string; draftId?: string };
+        // 按字符流入，按"段"切分换行
+        for (const ch of payload.chunk) {
+          if (ch === '\n') {
+            const line = buf;
+            buf = '';
+            setLines((prev) => [...prev, line]);
+          } else {
+            buf += ch;
+          }
+        }
+        setTyping(buf);
+      } catch {}
+      setState('streaming');
+    });
+
+    sse.addEventListener('schema_diff', () => {
+      if (buf) {
+        setLines((prev) => [...prev, buf]);
+        buf = '';
+        setTyping('');
+      }
+      setState('done');
+    });
+
+    sse.addEventListener('stream_error', () => {
+      setState('error');
+    });
+
+    sse.onerror = () => {
+      setState('error');
+      sse.close();
+    };
+
+    return () => sse.close();
+  }, [draftNodeId]);
+
+  /* ---------- 本地模拟通道 (mock 模式) ---------- */
+  useEffect(() => {
+    if (SSE_LIVE) return;
+    setTransport('local');
+    setState('connecting');
+    setLines([]);
+    setTyping('');
+
+    let chunkIdx = 0;
+    let charIdx = 0;
+    let cancelled = false;
+    const total = fallbackChunks.length;
+
+    const tick = () => {
+      if (cancelled) return;
+      if (chunkIdx >= total) {
+        setState('done');
+        return;
+      }
+      const current = fallbackChunks[chunkIdx];
+      if (charIdx < current.length) {
+        charIdx += 1;
+        setTyping(current.slice(0, charIdx));
+        setTimeout(tick, charMs);
+      } else {
+        setLines((prev) => [...prev, current]);
+        setTyping('');
+        chunkIdx += 1;
+        charIdx = 0;
+        setTimeout(tick, intervalMs);
+      }
+      setState('streaming');
+    };
+    tick();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [fallbackChunks, charMs, intervalMs]);
 
   return (
     <div className="hm-glass rounded-2xl px-5 py-4 font-mono text-[12.5px] leading-relaxed">
@@ -56,39 +132,27 @@ export function ReasoningStream({ chunks, intervalMs = 700, charMs = 22 }: Props
         <span className="hm-chip-accent">
           <span
             className={`inline-block w-1.5 h-1.5 rounded-full bg-accent mr-1.5 ${
-              done ? '' : 'animate-pulse'
+              state === 'done' ? '' : 'animate-pulse'
             }`}
           />
-          REASONING_CHUNK · SSE
+          REASONING_CHUNK · {transport === 'sse' ? 'SSE (real)' : 'LOCAL'}
         </span>
-        <div className="flex items-center gap-3">
-          <span className="hm-subtle text-[11px]">
-            {done
-              ? `STREAM_END · 共 ${chunks.length} 段`
-              : `正在推流 · 段 ${Math.min(chunkIdx + 1, chunks.length)}/${chunks.length}`}
-          </span>
-          {done && (
-            <button
-              onClick={replay}
-              className="text-[11px] text-accent hover:text-accent-hover transition-colors"
-            >
-              ↺ 重播
-            </button>
-          )}
-        </div>
+        <span className="hm-subtle text-[11px]">
+          {state === 'done'
+            ? `STREAM_END · 共 ${lines.length} 段`
+            : state === 'error'
+              ? '连接失败 · 回落 mock'
+              : `正在推流 · ${lines.length} 段已落地`}
+        </span>
       </div>
-      {/* 固定高度 + 内部滚动，避免页面 Layout Shift */}
-      <div
-        ref={scrollRef}
-        className="space-y-1.5 h-44 overflow-y-auto pr-2"
-      >
-        {rendered.map((line, i) => (
+      <div ref={scrollRef} className="space-y-1.5 h-44 overflow-y-auto pr-2">
+        {lines.map((line, i) => (
           <div key={i} className="text-ink-primary dark:text-ink-inverse">
             <span className="hm-subtle mr-2">›</span>
             {line}
           </div>
         ))}
-        {!done && (
+        {state !== 'done' && (
           <div className="text-ink-primary dark:text-ink-inverse">
             <span className="hm-subtle mr-2">›</span>
             {typing}

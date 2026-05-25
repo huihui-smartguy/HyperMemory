@@ -74,9 +74,9 @@ export const MOCK_TRACE_SPANS: TraceSpan[] = [
 ];
 
 export const MOCK_TRACE_HISTORY = [
-  { traceId: 'tr_6b21f9_e7a44c1d', intent: 'recommend+ask', totalMs: 107, status: 'ok' as const },
-  { traceId: 'tr_6b21f8_9af33c01', intent: 'search', totalMs: 64, status: 'ok' as const },
-  { traceId: 'tr_6b21f7_b21199aa', intent: 'ask', totalMs: 41, status: 'ok' as const },
-  { traceId: 'tr_6b21f6_4e90ff12', intent: 'recommend', totalMs: 138, status: 'warn' as const },
-  { traceId: 'tr_6b21f5_aaee2371', intent: 'recommend+ask', totalMs: 92, status: 'ok' as const },
+  { traceId: 'tr_6b21f9_e7a44c1d', intent: 'recommend+ask', totalMs: 107, status: 'ok' as const, startedAt: '2026-05-22T18:01:23Z', agentId: 'agent-101' },
+  { traceId: 'tr_6b21f8_9af33c01', intent: 'search', totalMs: 64, status: 'ok' as const, startedAt: '2026-05-22T18:00:55Z', agentId: 'agent-101' },
+  { traceId: 'tr_6b21f7_b21199aa', intent: 'ask', totalMs: 41, status: 'ok' as const, startedAt: '2026-05-22T18:00:32Z', agentId: 'agent-101' },
+  { traceId: 'tr_6b21f6_4e90ff12', intent: 'recommend', totalMs: 138, status: 'warn' as const, startedAt: '2026-05-22T18:00:01Z', agentId: 'agent-202' },
+  { traceId: 'tr_6b21f5_aaee2371', intent: 'recommend+ask', totalMs: 92, status: 'ok' as const, startedAt: '2026-05-22T17:59:14Z', agentId: 'agent-101' },
 ];

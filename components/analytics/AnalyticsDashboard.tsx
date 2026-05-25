@@ -3,6 +3,8 @@
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
 import { EChart } from '@/components/charts/EChart';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { useAnalytics } from '@/lib/api/hooks';
 import {
   MOCK_CATEGORY_PIE,
   MOCK_KPI_CARDS,
@@ -21,10 +23,20 @@ const AXIS_STYLE = {
 };
 
 export function AnalyticsDashboard() {
+  const { data: envelope } = useAnalytics();
+  const bundle = envelope?.data ?? {
+    kpi: MOCK_KPI_CARDS,
+    throughput: MOCK_THROUGHPUT,
+    latency: MOCK_LATENCY,
+    category: MOCK_CATEGORY_PIE,
+    nodes: MOCK_NODE_HEALTH,
+    ttl: MOCK_TTL_RECYCLE,
+  };
+
   const throughputOption = {
     grid: APPLE_GRID,
     tooltip: { trigger: 'axis', axisPointer: { type: 'line' } },
-    xAxis: { type: 'category', data: MOCK_THROUGHPUT.map((p) => p.t), ...AXIS_STYLE, boundaryGap: false },
+    xAxis: { type: 'category', data: bundle.throughput.map((p) => p.t), ...AXIS_STYLE, boundaryGap: false },
     yAxis: { type: 'value', ...AXIS_STYLE },
     series: [
       {
@@ -42,7 +54,7 @@ export function AnalyticsDashboard() {
             ],
           },
         },
-        data: MOCK_THROUGHPUT.map((p) => p.v),
+        data: bundle.throughput.map((p) => p.v),
       },
     ],
   };
@@ -50,7 +62,7 @@ export function AnalyticsDashboard() {
   const latencyOption = {
     grid: APPLE_GRID,
     tooltip: { trigger: 'axis' },
-    xAxis: { type: 'category', data: MOCK_LATENCY.map((p) => p.t), ...AXIS_STYLE, boundaryGap: false },
+    xAxis: { type: 'category', data: bundle.latency.map((p) => p.t), ...AXIS_STYLE, boundaryGap: false },
     yAxis: { type: 'value', ...AXIS_STYLE, axisLabel: { ...AXIS_STYLE.axisLabel, formatter: '{value} ms' } },
     series: [
       {
@@ -58,7 +70,7 @@ export function AnalyticsDashboard() {
         smooth: true,
         symbol: 'none',
         lineStyle: { color: '#34C759', width: 2 },
-        data: MOCK_LATENCY.map((p) => p.v),
+        data: bundle.latency.map((p) => p.v),
       },
     ],
   };
@@ -74,7 +86,7 @@ export function AnalyticsDashboard() {
         itemStyle: { borderColor: '#fff', borderWidth: 2 },
         label: { show: false },
         labelLine: { show: false },
-        data: MOCK_CATEGORY_PIE.map((p) => ({
+        data: bundle.category.map((p) => ({
           name: p.name,
           value: p.value,
           itemStyle: { color: p.color },
@@ -87,7 +99,7 @@ export function AnalyticsDashboard() {
     grid: APPLE_GRID,
     tooltip: { trigger: 'axis', axisPointer: { type: 'shadow' } },
     legend: { textStyle: { color: '#6E6E73' }, top: 0 },
-    xAxis: { type: 'category', data: MOCK_TTL_RECYCLE.map((d) => d.day), ...AXIS_STYLE },
+    xAxis: { type: 'category', data: bundle.ttl.map((d) => d.day), ...AXIS_STYLE },
     yAxis: { type: 'value', ...AXIS_STYLE },
     series: [
       {
@@ -95,23 +107,34 @@ export function AnalyticsDashboard() {
         type: 'bar',
         barWidth: 14,
         itemStyle: { color: '#0071E3', borderRadius: [6, 6, 0, 0] },
-        data: MOCK_TTL_RECYCLE.map((d) => d.total),
+        data: bundle.ttl.map((d) => d.total),
       },
       {
         name: 'TTL 回收',
         type: 'bar',
         barWidth: 14,
         itemStyle: { color: '#FF9F0A', borderRadius: [6, 6, 0, 0] },
-        data: MOCK_TTL_RECYCLE.map((d) => d.reclaimed),
+        data: bundle.ttl.map((d) => d.reclaimed),
       },
     ],
   };
 
   return (
     <div className="mx-auto max-w-7xl px-6 space-y-6">
+      <div className="flex items-center gap-2">
+        <DataSourceBadge
+          source={envelope?.source}
+          mockFields={envelope?.mockFields}
+          mockReason={envelope?.mockReason}
+        />
+        <span className="hm-subtle text-[12px]">
+          NovaMem 暂未提供大盘聚合端点，多数指标为 mock 兜底。
+        </span>
+      </div>
+
       {/* KPI 卡片 */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-        {MOCK_KPI_CARDS.map((k) => (
+        {bundle.kpi.map((k) => (
           <div key={k.label} className="hm-card p-5">
             <div className="text-[12px] hm-subtle">{k.label}</div>
             <div className="mt-2 flex items-baseline gap-2">
@@ -139,7 +162,7 @@ export function AnalyticsDashboard() {
 
       <Card title="存储节点健康度" subtitle="Milvus / PostgreSQL / Redis 集群">
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MOCK_NODE_HEALTH.map((n) => (
+          {bundle.nodes.map((n) => (
             <div key={n.node} className="border hm-hairline rounded-2xl p-4">
               <div className="flex items-center justify-between">
                 <div className="font-medium text-[13.5px]">{n.node}</div>
