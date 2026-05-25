@@ -5,8 +5,12 @@
   "description": "HyperMemory 企业级记忆系统 — 前端可视化面板",
   "scripts": {
     "dev": "next dev",
+    "dev:mock": "cross-env NEXT_PUBLIC_DATA_MODE=mock next dev",
+    "dev:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next dev",
     "build": "next build",
+    "build:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next build",
     "start": "next start",
+    "start:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next start",
     "lint": "next lint",
     "typecheck": "tsc --noEmit"
   },
@@ -28,6 +32,7 @@
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
     "autoprefixer": "^10.4.20",
+    "cross-env": "^7.0.3",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
     "postcss": "^8.4.47",
