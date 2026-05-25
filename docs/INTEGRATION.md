@@ -6,16 +6,142 @@
 
 ---
 
-## 1. 总览：双模式数据层
+## 1. 总览：三模式数据层
 
-前端从一开始就将数据获取抽象在 `lib/api/` 之下；组件层不直接 `import` mock 文件，而是通过 SWR hooks 取数。这一层根据 `NEXT_PUBLIC_DATA_MODE` 环境变量在两种模式之间切换：
+前端从一开始就将数据获取抽象在 `lib/api/` 之下；组件层不直接 `import` mock 文件，而是通过 SWR hooks 取数。这一层根据 `NEXT_PUBLIC_DATA_MODE` 环境变量在三种模式之间切换：
 
 | 模式 | 行为 | 用途 |
 | --- | --- | --- |
 | `mock` (默认) | hook 调用本地内存数据，叠加可配置延迟 (`NEXT_PUBLIC_MOCK_LATENCY_MS`)，模拟 loading | UI 演示、UI 单元开发、设计评审、e2e mock |
-| `live` | hook 通过 `fetcher` → Go 网关；SSE 通过 `EventSource` 直连 Python (Go 反代)；全局注入 `X-Trace-Id` 与 `X-Tenant-Id` | 真实集成、性能压测、生产部署 |
+| `bff` ⭐ **日常联调主战场** | hook 走同源 `/api/v1/...` → Next.js Route Handler 收口；部分调真实 NovaMem 后端、部分 mock 兜底；响应头携带 `X-Data-Source` / `X-Mock-Data` / `X-Mock-Fields` 让前端 UI 显式标识数据真实度 | 与真实后端 NovaMem 联调，灰度过渡期 |
+| `live` | hook 直连远端独立网关（需后端补齐 18 端点） | 远期，独立 BFF 服务部署 |
 
 切换的关键点位都集中在 `lib/api/config.ts` 与 `lib/api/hooks.ts`，组件无需改动即可享受切换能力。
+
+### 1.1 数据真实度可视化
+
+每个使用 hook 的页面右上角通过 `<DataSourceBadge>` 显示数据来源：
+
+- 🟢 **REAL · NovaMem** — 数据完全来自真实后端
+- 🟡 **REAL + MOCK** — hybrid 模式，部分字段真实部分 mock（hover 可见具体 mock 了哪些字段、为什么）
+- ⚫ **MOCK** — 全部为本地静态数据
+
+`X-Data-Source` 响应头是这套标识的源头，由 BFF Route Handler 通过 `lib/api/_route-helpers.ts` 中的 `jsonResponse(body, { source, mockFields, mockReason })` 统一注入。
+
+---
+
+---
+
+## 1.5 BFF 模式 · 适配 NovaMem 真实后端
+
+> 前端期望 18+ 个 REST + 1 SSE，NovaMem 真实只有 `GET /health` / `POST /v1/memories` / `POST /v1/recall` 3 个端点。BFF 适配层让前端 UI 零改动即可联调。
+
+### 1.5.1 关键文件
+
+```
+app/api/v1/**/route.ts             # 17 个 Route Handler 收口前端期望的所有端点
+lib/api/_novamem-client.ts         # callNovamem() 包装：5s 超时 + AbortController + 错误归一
+lib/api/_tenant-map.ts             # X-Tenant-Id 中文 → 后端 user_id 的双向映射字典
+lib/api/_mock-source.ts            # 唯一服务端 mock 入口 (import 'server-only')
+lib/api/_route-helpers.ts          # jsonResponse + 统一 trace/data-source 头注入
+lib/api/adapters/novamem.ts        # NovaMem RecallResult ↔ 前端 MemoryRecord 类型映射
+scripts/mock-novamem.mjs           # 40 行 Node 进程，占 8001 端口模拟 NovaMem
+```
+
+### 1.5.2 三种联调形态
+
+**形态 A · `dev:bff:fake` · 零外部依赖（开发首选）**
+
+```bash
+npm run dev:bff:fake
+# BFF_USE_MOCK_BACKEND=1 时，_novamem-client.ts 不发真实 HTTP，
+# 用内置 fixture 模拟上游响应。整个适配链路（Header 映射、类型转换、响应头注入）
+# 完全跑过，无需 Python 环境。
+```
+
+**形态 B · `npm run mock-backend` + `dev:bff` · 走真实 HTTP**
+
+```bash
+# 终端 1
+npm run mock-backend
+# [mock-novamem] listening on http://localhost:8001
+# 实现了 /health / POST /v1/memories / POST /v1/recall / GET /v1/admin/recall-logs(/:id)
+
+# 终端 2
+npm run dev:bff
+# BFF 真打 8001，验证完整网络栈（超时、AbortController、错误归一）
+```
+
+**形态 C · `dev:bff` 对接真实 NovaMem 服务**
+
+```bash
+# 在 .env.local 配置真实后端地址
+echo "NOVAMEM_BASE_URL=http://novamem.internal:8001" >> .env.local
+npm run dev:bff
+```
+
+### 1.5.3 端点适配矩阵
+
+| 前端期望 | NovaMem 实际 | BFF 适配方式 | 数据真实度 |
+| --- | --- | --- | --- |
+| `GET /api/v1/health` | `GET /health` | 透传 + 字段扩展 | REAL |
+| `GET /api/v1/memory/vault` | `POST /v1/recall` | Header X-Tenant-Id → body scope；空 q 用万能 query "*" | HYBRID |
+| `GET /api/v1/memory/:id` | 无 | mock 兜底 | MOCK |
+| `POST /api/v1/memory/ingest` | `POST /v1/memories` | 透传 + 注入 user_id | REAL |
+| `GET /api/v1/analytics/dashboard` | 部分（/health 派生 1 个真实节点） | 聚合 + 标 mock fields | HYBRID |
+| `GET /api/v1/analytics/{kpi,throughput,latency,category,ttl}` | 无 | mock 兜底 | MOCK |
+| `GET /api/v1/analytics/nodes` | `/health` 探活 | 真实 NovaMem 节点 + mock 节点 | HYBRID |
+| `GET /api/v1/schema/*` | 无 | mock 兜底（schema 进化是产品概念） | MOCK |
+| `GET /api/v1/evolution/stream` (SSE) | 无 | BFF 自己生成 SSE 流（surprise_alert + reasoning_chunk + schema_diff + ping） | MOCK |
+| `GET /api/v1/graph/pipeline` | `/health` 探活 | 首节点 state 由探活动态决定 | HYBRID |
+| `GET /api/v1/graph/causal` | 无（graph_db 预留） | mock 兜底 | MOCK |
+| `GET /api/v1/traces` | `GET /v1/admin/recall-logs` | RecallLog → TraceSummary，意图分类在 BFF 内做 | HYBRID |
+| `GET /api/v1/traces/:id` | `GET /v1/admin/recall-logs/:id` | 单条 RecallLog → 5 个虚拟 Span（按经验比例分配总耗时） | HYBRID |
+
+### 1.5.4 多租户机制
+
+前端 `NEXT_PUBLIC_TENANT` 是**中文展示名**（如 `理财部 · Wealth-01`），通过 `X-Tenant-Id` Header 发送。
+
+BFF 的 `lib/api/_tenant-map.ts` 维护双向字典：
+
+```ts
+'理财部 · Wealth-01' ↔ 'wealth-01'
+'信贷部 · Credit-02' ↔ 'credit-02'
+'研究院 · Lab-A'     ↔ 'lab-a'
+```
+
+请求到达 BFF：`tenantToUserId('理财部 · Wealth-01') = 'wealth-01'` 写入 body `scope.user_id`。
+响应回灌：`userIdToTenant(result.memory.scope.user_id) = '理财部 · Wealth-01'` 填到 `MemoryRecord.tenant`。
+
+字典未命中时，`slugify` 兜底（小写 + 去标点）。
+
+### 1.5.5 server-only 守卫
+
+`NOVAMEM_BASE_URL` 与 `BFF_USE_MOCK_BACKEND` **没有** `NEXT_PUBLIC_` 前缀，仅 server runtime 可见。`lib/api/_mock-source.ts` / `_novamem-client.ts` / `_tenant-map.ts` 头部 `import 'server-only'`，谁在 client component 引用即 build 失败，防内网地址泄漏到客户端 bundle。
+
+验证命令（应无输出）：
+```bash
+grep -rn "NOVAMEM_BASE_URL" .next/static
+grep -rn "BFF_USE_MOCK_BACKEND" .next/static
+```
+
+### 1.5.6 后端待补端点（已写入 PR/issue）
+
+**P0（解锁联调）**：
+- `GET /v1/admin/recall-logs?limit=&from=&to=&agent_id=`
+- `GET /v1/admin/recall-logs/{id}`
+- `/health` 扩展返回 `{ milvus_lite_ok, sqlite_ok, uptime_s, memory_count, cpu_pct, mem_pct }`
+- 入站 `X-Trace-Id` 落 RecallLog/MemoryItem metadata
+
+**P1（提升真实度）**：
+- `GET /v1/memories?scope=&limit=&cursor=` 列表查询
+- `GET /v1/memories/{id}` 单条详情
+- `GET /v1/admin/stats` 综合指标
+
+**P2（产品概念落地）**：
+- `MemoryItem.semantic_category` 字段对齐前端 4 分类
+- WebSocket/SSE 推送 evolution 事件
+- 实现 `graph_db/` 模块
 
 ---
 
@@ -25,9 +151,11 @@
 
 ```bash
 # 开发
-npm run dev          # = mock 模式 (默认)
-npm run dev:mock     # 显式 mock 模式
-npm run dev:live     # ⇒ live 模式，连接真实后端
+npm run dev               # = mock 模式 (默认，无需后端)
+npm run dev:mock          # 显式 mock 模式
+npm run dev:bff           # bff 模式，需配套启动 NovaMem 或 mock-novamem.mjs
+npm run dev:bff:fake      # bff 模式，BFF 内短路上游，**零外部依赖** ⭐ 主调试入口
+npm run dev:live          # ⇒ live 模式，直连远端独立网关
 
 # 生产构建
 npm run build        # mock 模式 (默认，用于纯演示部署)

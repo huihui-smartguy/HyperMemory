@@ -1,8 +1,10 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { Card } from '@/components/ui/Card';
 import { Chip } from '@/components/ui/Chip';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { useTraceDetail, useTraceList } from '@/lib/api/hooks';
 import { MOCK_TRACE_HISTORY, MOCK_TRACE_SPANS } from '@/lib/mocks/traces';
 import type { TraceSpan } from '@/lib/types';
 
@@ -18,19 +20,44 @@ const MODULE_COLOR: Record<string, string> = {
 const colorOf = (m: string) => MODULE_COLOR[m] ?? '#86868B';
 
 export function RetrievalXRay() {
-  const [activeTrace, setActiveTrace] = useState(MOCK_TRACE_HISTORY[0].traceId);
+  const { data: listEnv } = useTraceList();
+  const traces = listEnv?.data ?? MOCK_TRACE_HISTORY;
+
+  const [activeTrace, setActiveTrace] = useState<string>(traces[0]?.traceId ?? MOCK_TRACE_HISTORY[0].traceId);
+
+  // 当列表数据到达后，若当前 activeTrace 不在列表中，自动指向第一个
+  useEffect(() => {
+    if (traces.length && !traces.some((t) => t.traceId === activeTrace)) {
+      setActiveTrace(traces[0].traceId);
+    }
+  }, [traces, activeTrace]);
+
+  const { data: detailEnv } = useTraceDetail(activeTrace);
+  const spans = detailEnv?.data ?? MOCK_TRACE_SPANS;
+
   const [activeSpan, setActiveSpan] = useState<TraceSpan | null>(null);
   const total = useMemo(
-    () => Math.max(...MOCK_TRACE_SPANS.map((s) => s.start + s.durationMs)),
-    [],
+    () => (spans.length ? Math.max(...spans.map((s) => s.start + s.durationMs)) : 0),
+    [spans],
   );
 
   return (
     <div className="mx-auto max-w-7xl px-6 space-y-6">
+      <div className="flex items-center gap-2">
+        <DataSourceBadge
+          source={detailEnv?.source ?? listEnv?.source}
+          mockFields={detailEnv?.mockFields}
+          mockReason={detailEnv?.mockReason ?? listEnv?.mockReason}
+        />
+        <span className="hm-subtle text-[12px]">
+          Trace 列表来自 NovaMem RecallLog（待后端 P0 补端点）；Span 划分由 BFF 按耗时比例合成。
+        </span>
+      </div>
+
       {/* Trace 历史 */}
       <Card title="最近请求" subtitle="点击任意 Trace 查看其链路瀑布流">
         <div className="grid grid-cols-1 md:grid-cols-5 gap-3">
-          {MOCK_TRACE_HISTORY.map((t) => (
+          {traces.map((t) => (
             <button
               key={t.traceId}
               onClick={() => setActiveTrace(t.traceId)}
@@ -59,7 +86,7 @@ export function RetrievalXRay() {
         subtitle={`Trace · ${activeTrace} · 总耗时 ${total} ms`}
       >
         <div className="space-y-1.5">
-          {MOCK_TRACE_SPANS.map((s, i) => {
+          {spans.map((s, i) => {
             const leftPct = (s.start / total) * 100;
             const widthPct = (s.durationMs / total) * 100;
             return (

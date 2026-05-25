@@ -3,8 +3,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { MOCK_MEMORIES } from '@/lib/mocks/memories';
 import { useVaultMemories } from '@/lib/api/hooks';
-import { DATA_MODE } from '@/lib/api/config';
 import { Chip } from '@/components/ui/Chip';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 import type { MemoryCategory, MemoryRecord } from '@/lib/types';
 
 const CATEGORIES: ('全部' | MemoryCategory)[] = [
@@ -52,9 +52,9 @@ export function VaultExplorer() {
     [],
   );
 
-  // 走数据层 hook：mock 模式返回本地过滤；live 模式发起 REST 请求
-  const { data, isLoading, error } = useVaultMemories({ q, category, agent });
-  const filtered = data?.items ?? [];
+  // 走数据层 hook：mock 模式返回本地过滤；bff/live 模式发起 REST 请求
+  const { data: envelope, isLoading, error } = useVaultMemories({ q, category, agent });
+  const filtered = envelope?.data?.items ?? [];
 
   return (
     <div className="mx-auto max-w-7xl px-6">
@@ -118,9 +118,11 @@ export function VaultExplorer() {
         </select>
 
         <div className="ml-auto flex items-center gap-3 hm-subtle text-[12.5px]">
-          <Chip variant={DATA_MODE === 'live' ? 'accent' : 'default'}>
-            {DATA_MODE === 'live' ? 'LIVE · Go 网关' : 'MOCK · 本地数据'}
-          </Chip>
+          <DataSourceBadge
+            source={envelope?.source}
+            mockFields={envelope?.mockFields}
+            mockReason={envelope?.mockReason}
+          />
           {isLoading && <span className="animate-pulse">加载中…</span>}
           {error && (
             <span className="text-signal-danger">接口异常 · 已使用空集合</span>

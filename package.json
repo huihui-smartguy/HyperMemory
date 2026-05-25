@@ -6,12 +6,19 @@
   "scripts": {
     "dev": "next dev",
     "dev:mock": "cross-env NEXT_PUBLIC_DATA_MODE=mock next dev",
+    "dev:bff": "cross-env NEXT_PUBLIC_DATA_MODE=bff next dev",
+    "dev:bff:fake": "cross-env NEXT_PUBLIC_DATA_MODE=bff BFF_USE_MOCK_BACKEND=1 next dev",
     "dev:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next dev",
+    "mock-backend": "node scripts/mock-novamem.mjs",
     "build": "next build",
+    "build:bff": "cross-env NEXT_PUBLIC_DATA_MODE=bff next build",
     "build:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next build",
     "start": "next start",
+    "start:bff": "cross-env NEXT_PUBLIC_DATA_MODE=bff next start",
     "start:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next start",
     "lint": "next lint",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "typecheck": "tsc --noEmit"
   },
   "dependencies": {
@@ -31,13 +38,15 @@
     "@types/node": "^20.16.10",
     "@types/react": "^18.3.11",
     "@types/react-dom": "^18.3.0",
+    "@vitest/coverage-v8": "^4.1.7",
     "autoprefixer": "^10.4.20",
     "cross-env": "^7.0.3",
     "eslint": "^8.57.1",
     "eslint-config-next": "14.2.15",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
-    "typescript": "^5.6.2"
+    "typescript": "^5.6.2",
+    "vitest": "^4.1.7"
   },
   "engines": {
     "node": ">=18.17.0"
