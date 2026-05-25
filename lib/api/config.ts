@@ -1,4 +1,4 @@
-// HyperMemory 前端数据层配置 · 单一可信源
+// NovaMem 前端数据层配置 · 单一可信源
 // NEXT_PUBLIC_* 前缀的变量会注入到客户端 bundle；
 // 无 NEXT_PUBLIC_ 前缀的（如 NOVAMEM_BASE_URL）仅在 server runtime 可见，防内网地址泄漏。
 

@@ -1,0 +1,59 @@
+# ================================================================
+# NovaMem Dashboard · 生产环境
+# ================================================================
+# 使用前提：
+#   1. 已构建并推送前端镜像：docker build -t novamem-ui:latest .
+#   2. 后端团队提供 novamem/novamem:latest 镜像（或替换为实际镜像名）
+#
+# 用法：
+#   docker compose -f docker-compose.prod.yml up -d
+#   docker compose -f docker-compose.prod.yml logs -f novamem-ui
+#   docker compose -f docker-compose.prod.yml down
+#
+# 生产建议：
+#   - 将 NOVAMEM_BASE_URL 等敏感配置放入 .env.prod 并通过 env_file 挂载
+#   - 在反向代理（Nginx / Traefik）层启用 TLS，不要直接暴露 3000 端口
+# ================================================================
+
+services:
+  novamem-ui:
+    image: novamem-ui:latest   # 使用预构建镜像，不在生产实时 build
+    container_name: novamem-ui-prod
+    ports:
+      - "3000:3000"
+    environment:
+      BFF_USE_MOCK_BACKEND: "0"          # 生产环境接真实后端
+      NOVAMEM_BASE_URL: "http://novamem-backend:8001"
+    depends_on:
+      novamem-backend:
+        condition: service_healthy
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000/api/v1/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  novamem-backend:
+    # 替换为实际后端镜像（由 NovaMem 后端团队提供）
+    image: novamem/novamem:latest
+    container_name: novamem-backend-prod
+    ports:
+      - "8001:8001"
+    volumes:
+      - novamem-data:/app/data          # Milvus Lite + SQLite 持久化
+    environment:
+      # 根据实际后端配置填写
+      NOVAMEM_ENV: production
+    restart: always
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:8001/health"]
+      interval: 30s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
+
+volumes:
+  novamem-data:
+    driver: local

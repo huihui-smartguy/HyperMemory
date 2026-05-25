@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { EvolutionFactory } from '@/components/evolution/EvolutionFactory';
 
-export const metadata = { title: 'Schema 进化车间 · HyperMemory' };
+export const metadata = { title: 'Schema 进化车间 · NovaMem' };
 
 export default function EvolutionPage() {
   return (

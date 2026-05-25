@@ -100,7 +100,7 @@ export function MegaMenu() {
             className="flex items-center gap-2 text-[15px] font-semibold tracking-apple"
           >
             <BrainstormGlyph />
-            HyperMemory
+            NovaMem
           </Link>
 
           <ul className="flex items-center gap-1">
@@ -211,7 +211,7 @@ export function MegaMenu() {
 }
 
 /**
- * 思维节点网络图标 · 呼应 HyperMemory 的记忆图谱与头脑风暴语义。
+ * 思维节点网络图标 · 呼应 NovaMem 的记忆图谱与头脑风暴语义。
  * 中心实心节点 + 四周空心节点 + 细线连接，符合 Apple 极简线条 + 单一强调色。
  */
 function BrainstormGlyph() {

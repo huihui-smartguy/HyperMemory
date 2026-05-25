@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { VaultExplorer } from '@/components/vault/VaultExplorer';
 
-export const metadata = { title: '记忆金库 · HyperMemory' };
+export const metadata = { title: '记忆金库 · NovaMem' };
 
 export default function VaultPage() {
   return (

@@ -1,7 +1,7 @@
 import { PageHeader } from '@/components/ui/PageHeader';
 import { AnalyticsDashboard } from '@/components/analytics/AnalyticsDashboard';
 
-export const metadata = { title: '运行大盘 · HyperMemory' };
+export const metadata = { title: '运行大盘 · NovaMem' };
 
 export default function AnalyticsPage() {
   return (

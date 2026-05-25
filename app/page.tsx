@@ -1,126 +1,195 @@
+'use client';
+
 import Link from 'next/link';
+import { useAnalytics } from '@/lib/api/hooks';
+import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
 
-const FEATURES = [
+// ----------------------------------------------------------------
+// 模块配置
+// ----------------------------------------------------------------
+const MODULES = [
   {
-    eyebrow: '稳态业务区',
+    key: 'vault',
+    glyph: '◍',
     title: '记忆金库',
-    desc: '在沉浸式数据网格中，结构化呈现原始 raw.md 与格式化结果，配合 Spotlight 搜索与实体胶囊，轻盈完成大规模检索与下钻。',
+    category: '稳态业务',
+    desc: '结构化呈现原始记忆与格式化结果，配合 Spotlight 搜索与实体胶囊。',
     href: '/basic/vault',
-    accent: '◍',
   },
   {
-    eyebrow: '稳态业务区',
+    key: 'analytics',
+    glyph: '◐',
     title: '运行大盘',
-    desc: '吞吐、延迟、记忆分类与节点健康度。以折线、饼图与极简卡片承载关键 SLI，剔除一切冗余。',
+    category: '稳态业务',
+    desc: '吞吐量、延迟分布、记忆分类与节点健康度的实时可视化看板。',
     href: '/basic/analytics',
-    accent: '◐',
   },
   {
-    eyebrow: '敏态进化区',
+    key: 'evolution',
+    glyph: '◇',
     title: 'Schema 进化车间',
-    desc: '辩证推理过程以 SSE 打字机流式呈现，Monaco Diff 还原 Schema 升级提案，一键完成人机协同审批。',
+    category: '敏态进化',
+    desc: '辩证推理流 · Monaco Diff 升级提案 · 人机协同审批一体化。',
     href: '/advanced/evolution',
-    accent: '◇',
   },
   {
-    eyebrow: '敏态进化区',
+    key: 'cognitive-graph',
+    glyph: '◈',
     title: '认知拓扑引擎',
-    desc: '从摄入到图谱编译的全生命周期管道，叠加可拖拽的因果图谱与虚线高亮的反事实提取链路。',
+    category: '敏态进化',
+    desc: '记忆全生命周期管道可视化，含可拖拽因果图谱与反事实提取链路。',
     href: '/advanced/cognitive-graph',
-    accent: '◈',
   },
   {
-    eyebrow: '敏态进化区',
+    key: 'retrieval-xray',
+    glyph: '◉',
     title: '召回 X 光机',
-    desc: '为每一次 Agent 请求绘制全链路瀑布流，重排序得分与去重拦截一目了然，Bad Case 不再黑盒。',
+    category: '敏态进化',
+    desc: '为每次 Agent 请求绘制全链路瀑布流，Bad Case 排查不再黑盒。',
     href: '/advanced/retrieval-xray',
-    accent: '◉',
   },
   {
-    eyebrow: '运维工程',
+    key: 'dev',
+    glyph: '⌘',
     title: '开发者中心',
-    desc: '租户上下文、TraceID、API 契约、SSE 事件协议与降级策略，工程师入口。',
+    category: '运维工程',
+    desc: '租户上下文、TraceID、API 契约、SSE 协议与降级策略一览。',
     href: '/dev',
-    accent: '⌘',
   },
-];
+] as const;
 
+// ----------------------------------------------------------------
+// 页面
+// ----------------------------------------------------------------
 export default function HomePage() {
+  const { data, isLoading } = useAnalytics();
+
+  // kpi 是 { label, value, delta, positive }[] 数组
+  const kpiCards = data?.data?.kpi ?? [];
+
   return (
-    <div>
-      {/* Hero */}
-      <section className="mx-auto max-w-7xl px-6 pt-24 pb-32 animate-rise">
-        <div className="text-[12px] font-medium tracking-[0.2em] uppercase text-accent">
-          Enterprise Memory · Modeling · Adaptive Recall · Self-Evolving Schema
+    <div className="mx-auto max-w-7xl px-6 animate-rise">
+
+      {/* ── 顶部标题区 ── */}
+      <div className="flex items-start justify-between pt-10 pb-8 border-b hm-hairline">
+        <div>
+          <h1 className="hm-headline text-[28px] text-ink-primary dark:text-ink-inverse">
+            NovaMem
+          </h1>
+          <p className="mt-1.5 text-[13.5px] hm-subtle">
+            企业级智能体元认知记忆系统 · 实时记忆摄入 · 自适应召回 · Schema 自主进化
+          </p>
         </div>
-        <h1 className="mt-5 text-[64px] md:text-[88px] font-semibold leading-[0.98] tracking-apple">
-          让 Agent 的<br />
-          自主进化<span className="text-accent">看得见</span>。
-        </h1>
-        <p className="mt-8 max-w-2xl text-[20px] md:text-[22px] leading-relaxed hm-subtle font-light">
-          HyperMemory 是面向大模型智能体的企业级元认知中枢。
-          原始记忆摄入、结构化记忆建模、自适应多路召回、Schema 自主进化 —— 全部以极简白盒方式呈现。
-        </p>
-        <div className="mt-10 flex flex-wrap items-center gap-3">
-          <Link href="/basic/vault" className="hm-btn">
-            进入记忆金库
-          </Link>
-          <Link href="/advanced/evolution" className="hm-btn-ghost">
-            体验 Schema 进化车间 →
-          </Link>
+        {data && (
+          <DataSourceBadge
+            source={data.source}
+            mockFields={data.mockFields}
+            mockReason={data.mockReason}
+          />
+        )}
+      </div>
+
+      {/* ── KPI 状态栏 ── */}
+      <div className="py-5 border-b hm-hairline">
+        <div className="flex flex-wrap items-center gap-2.5">
+          {/* 系统状态指示 */}
+          <span className="flex items-center gap-1.5 hm-chip">
+            <span
+              className={`w-1.5 h-1.5 rounded-full ${
+                isLoading ? 'bg-ink-tertiary animate-pulse' : 'bg-signal-success'
+              }`}
+            />
+            <span className="text-[12px]">
+              {isLoading ? '加载中…' : '系统正常'}
+            </span>
+          </span>
+
+          {/* KPI 指标芯片 */}
+          {kpiCards.length > 0
+            ? kpiCards.map((k) => (
+                <span key={k.label} className="hm-chip text-[12px] flex items-center gap-1">
+                  <span className="hm-subtle">{k.label}</span>
+                  <span className="mx-0.5 hm-subtle opacity-30">/</span>
+                  <span className="font-medium tabular-nums text-ink-primary dark:text-ink-inverse">
+                    {k.value}
+                  </span>
+                  {k.delta && (
+                    <span
+                      className={`text-[10px] ml-0.5 ${
+                        k.positive ? 'text-signal-success' : 'text-signal-danger'
+                      }`}
+                    >
+                      {k.delta}
+                    </span>
+                  )}
+                </span>
+              ))
+            : /* 骨架占位 */
+              [1, 2, 3, 4].map((i) => (
+                <span
+                  key={i}
+                  className="hm-chip w-32 h-7 animate-pulse bg-black/[0.04] dark:bg-white/[0.04]"
+                />
+              ))}
+        </div>
+      </div>
+
+      {/* ── 模块网格 ── */}
+      <div className="py-8">
+        <div className="mb-5 flex items-center justify-between">
+          <h2 className="text-[12px] font-medium tracking-[0.12em] uppercase hm-subtle">
+            功能模块
+          </h2>
+          <span className="text-[12px] hm-subtle">{MODULES.length} 个模块</span>
         </div>
 
-        <div className="mt-20 grid grid-cols-2 md:grid-cols-4 gap-6">
-          {[
-            ['12,418', '今日 QPS 峰值'],
-            ['63 ms', 'Go 网关 P99'],
-            ['241', '在线 Schema'],
-            ['99.98%', '可用性 SLA'],
-          ].map(([v, k]) => (
-            <div key={k} className="border-l hm-hairline pl-5">
-              <div className="text-[28px] font-semibold tracking-apple">{v}</div>
-              <div className="mt-1 text-[12.5px] hm-subtle">{k}</div>
-            </div>
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+          {MODULES.map((m) => (
+            <Link
+              key={m.key}
+              href={m.href}
+              className="group hm-card p-5 flex flex-col gap-3 transition-all
+                         hover:shadow-floating hover:-translate-y-0.5
+                         hover:border-accent/20 dark:hover:border-accent/20"
+            >
+              {/* 图标 + 标题行 */}
+              <div className="flex items-center gap-3">
+                <span
+                  className="w-8 h-8 rounded-lg bg-accent-mute text-accent
+                              flex items-center justify-center text-[15px] flex-shrink-0"
+                >
+                  {m.glyph}
+                </span>
+                <div className="min-w-0">
+                  <div
+                    className="text-[15px] font-semibold tracking-apple text-ink-primary
+                                dark:text-ink-inverse group-hover:text-accent transition-colors truncate"
+                  >
+                    {m.title}
+                  </div>
+                  <div className="text-[11px] hm-subtle mt-0.5">{m.category}</div>
+                </div>
+              </div>
+
+              {/* 描述 */}
+              <p className="text-[13px] hm-subtle leading-relaxed font-light flex-1">
+                {m.desc}
+              </p>
+
+              {/* 进入箭头（hover 显现）*/}
+              <div className="flex items-center justify-end">
+                <span
+                  className="text-[12px] text-accent opacity-0 transition-all
+                              group-hover:opacity-100 group-hover:translate-x-0.5"
+                >
+                  进入 →
+                </span>
+              </div>
+            </Link>
           ))}
         </div>
-      </section>
+      </div>
 
-      {/* Feature grid */}
-      <section className="border-t hm-hairline">
-        <div className="mx-auto max-w-7xl px-6 py-24">
-          <h2 className="text-[36px] font-semibold tracking-apple">六大核心面板</h2>
-          <p className="mt-3 max-w-xl hm-subtle font-light">
-            从稳态业务到敏态进化，每一个模块都是底层认知能力的白盒投影。
-          </p>
-          <div className="mt-12 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-5">
-            {FEATURES.map((f) => (
-              <Link
-                key={f.href}
-                href={f.href}
-                className="group hm-card p-7 transition-all hover:shadow-floating hover:-translate-y-0.5"
-              >
-                <div className="text-[12px] font-medium tracking-[0.2em] uppercase text-accent">
-                  {f.eyebrow}
-                </div>
-                <div className="mt-4 flex items-center gap-3">
-                  <span className="w-9 h-9 rounded-xl bg-accent-mute text-accent flex items-center justify-center">
-                    {f.accent}
-                  </span>
-                  <h3 className="text-[20px] font-semibold tracking-apple group-hover:text-accent transition-colors">
-                    {f.title}
-                  </h3>
-                </div>
-                <p className="mt-4 hm-subtle leading-relaxed text-[14.5px] font-light">
-                  {f.desc}
-                </p>
-                <div className="mt-6 text-[13px] text-accent opacity-0 group-hover:opacity-100 transition-opacity">
-                  进入 →
-                </div>
-              </Link>
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }

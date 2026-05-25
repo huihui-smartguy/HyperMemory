@@ -1,8 +1,8 @@
 {
-  "name": "hypermemory-dashboard",
+  "name": "novamem-dashboard",
   "version": "1.0.0",
   "private": true,
-  "description": "HyperMemory 企业级记忆系统 — 前端可视化面板",
+  "description": "NovaMem 企业级智能体记忆系统 — 前端可视化面板",
   "scripts": {
     "dev": "next dev",
     "dev:mock": "cross-env NEXT_PUBLIC_DATA_MODE=mock next dev",
