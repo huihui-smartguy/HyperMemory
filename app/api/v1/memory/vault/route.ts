@@ -20,11 +20,13 @@ export async function GET(req: NextRequest) {
   const q = sp.get('q')?.trim() || '';
   const category = sp.get('category') as MemoryCategory | '全部' | null;
   const agentId = sp.get('agent_id');
+  const explicitUserId = sp.get('user_id')?.trim();
   const page = Math.max(Number(sp.get('page') ?? 1), 1);
   const pageSize = Math.min(Number(sp.get('page_size') ?? 50), 200);
 
   const tenantHeader = req.headers.get('X-Tenant-Id');
-  const userId = tenantToUserId(tenantHeader);
+  // user_id 查询参数（如非空）覆盖 tenant 派生的默认 user_id
+  const userId = explicitUserId || tenantToUserId(tenantHeader);
   const tenantDisplay = userIdToTenant(userId);
 
   // 用户决策：空 query 时也用万能 query 调后端
@@ -65,7 +67,7 @@ export async function GET(req: NextRequest) {
     );
   } catch (e) {
     // 上游不可达：mock 兜底
-    const filtered = filterLocalMock({ q, category, agentId });
+    const filtered = filterLocalMock({ q, category, agentId, userId: explicitUserId ?? null });
     const start = (page - 1) * pageSize;
     return jsonResponse(
       { items: filtered.slice(start, start + pageSize), total: filtered.length, page, page_size: pageSize },
@@ -82,11 +84,14 @@ function filterLocalMock(opts: {
   q: string;
   category: MemoryCategory | '全部' | null;
   agentId: string | null;
+  userId: string | null;
 }) {
   const needle = opts.q.toLowerCase();
+  const userNeedle = opts.userId?.toLowerCase() ?? '';
   return MOCK.memories.filter((m) => {
     if (opts.category && opts.category !== '全部' && m.category !== opts.category) return false;
     if (opts.agentId && opts.agentId !== '全部' && m.agentId !== opts.agentId) return false;
+    if (userNeedle && !m.userId.toLowerCase().includes(userNeedle)) return false;
     if (!needle) return true;
     return (
       m.summary.toLowerCase().includes(needle) ||

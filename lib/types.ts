@@ -1,12 +1,14 @@
-export type MemoryCategory = '事实记忆' | '语义记忆' | '画像规则' | '情景记忆';
+export type MemoryCategory = '语义记忆' | '画像规则' | '情景记忆';
 
 export interface MemoryRecord {
   id: string;
+  userId: string;          // 后端 scope.user_id，多用户系统中区分不同用户的记忆
   sessionId: string;
   agentId: string;
-  tenant: string;
+  tenant: string;          // 组织级多租户显示名（如「理财部 · Wealth-01」）
   category: MemoryCategory;
-  summary: string;
+  summary: string;         // 截断 200 字 · 网格展示
+  rawContent: string;      // 后端 content 全文 · 详情面板展示
   tags: string[];
   triggers: string[];
   ttlHours: number;

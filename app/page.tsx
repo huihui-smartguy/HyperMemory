@@ -1,8 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { useMemo } from 'react';
 import { useAnalytics } from '@/lib/api/hooks';
 import { DataSourceBadge } from '@/components/ui/DataSourceBadge';
+import { isModuleEnabled } from '@/lib/features';
 
 // ----------------------------------------------------------------
 // 模块配置
@@ -66,6 +68,12 @@ export default function HomePage() {
 
   // kpi 是 { label, value, delta, positive }[] 数组
   const kpiCards = data?.data?.kpi ?? [];
+
+  // 按 NEXT_PUBLIC_ENABLED_MODULES 过滤
+  const visibleModules = useMemo(
+    () => MODULES.filter((m) => isModuleEnabled(m.key)),
+    [],
+  );
 
   return (
     <div className="mx-auto max-w-7xl px-6 animate-rise">
@@ -140,11 +148,11 @@ export default function HomePage() {
           <h2 className="text-[12px] font-medium tracking-[0.12em] uppercase hm-subtle">
             功能模块
           </h2>
-          <span className="text-[12px] hm-subtle">{MODULES.length} 个模块</span>
+          <span className="text-[12px] hm-subtle">{visibleModules.length} 个模块</span>
         </div>
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-          {MODULES.map((m) => (
+          {visibleModules.map((m) => (
             <Link
               key={m.key}
               href={m.href}

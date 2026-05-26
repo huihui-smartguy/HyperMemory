@@ -127,6 +127,7 @@ docker run -p 3000:3000 \
 | `NEXT_PUBLIC_SSE_LIVE` | `true` | SSE 真实模式（false 用 setTimeout 模拟） |
 | `NEXT_PUBLIC_MOCK_LATENCY_MS` | `0` | mock 模式人工延迟（毫秒） |
 | `NEXT_PUBLIC_API_BASE_URL` | *(空)* | live 模式直连远端网关地址 |
+| `NEXT_PUBLIC_ENABLED_MODULES` | `vault,dev`（生产）<br>`vault,analytics,evolution,cognitive-graph,retrieval-xray,dev`（开发） | 启用的功能模块列表（逗号分隔） |
 
 ### 运行时变量（`-e` / `environment:`）
 
@@ -186,6 +187,63 @@ curl http://localhost:3000/api/v1/health
 # 查看 Docker 健康状态
 docker inspect --format='{{.State.Health.Status}}' novamem-ui
 ```
+
+---
+
+## 6.5 按模块裁剪（生产精简模式）
+
+考虑到后端目前只具备「存记忆/查记忆」能力，生产部署应该只暴露**记忆金库**与**开发者中心**这两个功能模块；运行大盘、Schema 进化车间、认知拓扑引擎、召回 X 光机等高级模块在后端补齐之前，应该在前端屏蔽。
+
+### 实现机制
+
+构建期变量 `NEXT_PUBLIC_ENABLED_MODULES`（逗号分隔的模块列表）控制三件事：
+
+| 位置 | 行为 |
+|------|------|
+| 顶部导航 `MegaMenu` | 过滤 NAV 数组，空 group 自动隐藏 |
+| 主页模块网格 `app/page.tsx` | 过滤 MODULES 数组 |
+| `middleware.ts` 路由拦截 | 禁用模块的 URL 308 重定向到 `/basic/vault` |
+
+可选 key：`vault` · `analytics` · `evolution` · `cognitive-graph` · `retrieval-xray` · `dev`
+
+**注意**：`vault` 永远启用（系统核心）。
+
+### 三种典型配置
+
+```bash
+# A) 完整演示（开发/演示）
+NEXT_PUBLIC_ENABLED_MODULES=vault,analytics,evolution,cognitive-graph,retrieval-xray,dev
+
+# B) 生产精简（推荐 - docker-compose.prod.yml 默认）
+NEXT_PUBLIC_ENABLED_MODULES=vault,dev
+
+# C) 纯运营（只看记忆，连 dev 也屏蔽）
+NEXT_PUBLIC_ENABLED_MODULES=vault
+```
+
+### 在 Docker 中切换
+
+```bash
+# 生产精简（默认）
+docker compose -f docker-compose.prod.yml build
+docker compose -f docker-compose.prod.yml up -d
+
+# 临时调整（保留 analytics）
+docker build \
+  --build-arg NEXT_PUBLIC_ENABLED_MODULES=vault,analytics,dev \
+  -t novamem-ui:custom .
+```
+
+### 在本机切换
+
+```bash
+# 生产精简（仅 vault + dev）
+npm run start:prod         # cross-env 已设置 ENABLED_MODULES=vault,dev
+# 或直接：
+NEXT_PUBLIC_ENABLED_MODULES=vault,dev npm run build && npm start
+```
+
+**重要**：`NEXT_PUBLIC_ENABLED_MODULES` 是构建期变量，**修改后必须 `npm run build` / `docker build` 重新构建镜像**。运行时通过 `docker run -e` 设置无效。
 
 ---
 

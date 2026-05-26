@@ -19,6 +19,8 @@ services:
         NEXT_PUBLIC_DATA_MODE: bff
         NEXT_PUBLIC_SSE_LIVE: "true"
         NEXT_PUBLIC_MOCK_LATENCY_MS: "80"
+        # 演示环境展示全部 6 个模块
+        NEXT_PUBLIC_ENABLED_MODULES: "vault,analytics,evolution,cognitive-graph,retrieval-xray,dev"
     image: novamem-ui:dev
     container_name: novamem-ui
     ports:

@@ -35,9 +35,10 @@ describe('recallToMemoryRecord', () => {
     scoring: { relevance: 0.92, recency: 0.8, importance: 0.7, signals: ['拒绝高风险资产'] },
   };
 
-  it('maps core fields', () => {
+  it('maps core fields including userId', () => {
     const r = recallToMemoryRecord(sample, '理财部 · Wealth-01');
     expect(r.id).toBe('nm_abc');
+    expect(r.userId).toBe('wealth-01');
     expect(r.sessionId).toBe('sess_1');
     expect(r.agentId).toBe('agent-101');
     expect(r.tenant).toBe('理财部 · Wealth-01');
@@ -46,7 +47,7 @@ describe('recallToMemoryRecord', () => {
     expect(r.triggers).toEqual(['拒绝高风险资产']);
     expect(r.ttlHours).toBe(720);
     expect(r.confidence).toBeCloseTo(0.92, 5);
-    expect(r.category).toBe('事实记忆'); // kind=active → 事实记忆
+    expect(r.category).toBe('语义记忆'); // kind=active → 语义记忆（事实记忆 已移除）
   });
 
   it('prefers semantic_category over kind', () => {
@@ -57,25 +58,42 @@ describe('recallToMemoryRecord', () => {
     expect(r.category).toBe('画像规则');
   });
 
-  it('tolerates missing scope / scoring', () => {
+  it('tolerates missing scope / scoring (userId defaults to unknown)', () => {
     const r = recallToMemoryRecord(
       { memory: { id: 'nm_x', content: 'hello' } },
       'T',
     );
+    expect(r.userId).toBe('unknown');
     expect(r.sessionId).toBe('unknown');
     expect(r.agentId).toBe('unknown');
     expect(r.tags).toEqual([]);
     expect(r.triggers).toEqual([]);
     expect(r.ttlHours).toBe(0);
     expect(r.confidence).toBe(0);
-    expect(r.category).toBe('事实记忆'); // 默认兜底
+    expect(r.category).toBe('语义记忆'); // 默认兜底
   });
 
-  it('truncates summary to 200 chars with ellipsis', () => {
+  it('truncates summary to 200 chars with ellipsis, keeps rawContent full', () => {
     const long = 'a'.repeat(300);
     const r = recallToMemoryRecord({ memory: { id: 'x', content: long } }, 'T');
     expect(r.summary.length).toBe(200);
     expect(r.summary.endsWith('…')).toBe(true);
+    // rawContent 不截断
+    expect(r.rawContent.length).toBe(300);
+    expect(r.rawContent).toBe(long);
+  });
+
+  it('maps kind=stale to 情景记忆 and kind=archived to 语义记忆', () => {
+    const stale = recallToMemoryRecord(
+      { memory: { id: 'a', content: 'x', kind: 'stale' } },
+      'T',
+    );
+    expect(stale.category).toBe('情景记忆');
+    const archived = recallToMemoryRecord(
+      { memory: { id: 'b', content: 'y', kind: 'archived' } },
+      'T',
+    );
+    expect(archived.category).toBe('语义记忆');
   });
 
   it('clamps relevance to [0,1]', () => {
