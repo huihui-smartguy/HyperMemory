@@ -8,12 +8,51 @@
 ```bash
 npm install            # 或 pnpm / yarn
 npm run dev            # mock 模式（默认，无需后端）
-npm run dev:live       # live 模式 · 接入真实 Go 网关
 npm run typecheck
-npm run build && npm run start
+npm run lint
+npm run test
 ```
 
 Node ≥ 18.17。首次启动 Monaco 与 ECharts 会按需懒加载。
+
+### 命令矩阵
+
+| 命令 | 用途 | 数据模式 | 启用模块 |
+| --- | --- | --- | --- |
+| `npm run dev` | 默认开发（mock） | `mock` | 全部 6 个 |
+| `npm run dev:bff:fake` | BFF 联调 · 零外部依赖 ⭐ | `bff` + 内置 fixture | 全部 6 个 |
+| `npm run dev:bff` | BFF 联调 · 打真实 8001 | `bff` + 真实 NovaMem | 全部 6 个 |
+| `npm run dev:live` | 直连远端独立网关 | `live` | 全部 6 个 |
+| **`npm run dev:prod`** | **本地生产精简预览** ⭐ | `bff` + 内置 fixture | 仅 vault + dev |
+| `npm run mock-backend` | 起 8001 端口的 mock NovaMem | — | — |
+| `npm run build` | 默认构建 | mock | 全部 6 个 |
+| `npm run build:bff` | BFF 模式构建 | `bff` | 全部 6 个 |
+| `npm run build:live` | live 模式构建 | `live` | 全部 6 个 |
+| **`npm run build:prod`** | **生产构建（仅 vault + dev）** | `bff` | 仅 vault + dev |
+| `npm start` | 启动 build 产物 | 取决于 build | 取决于 build |
+| `npm run start:bff` | 启动 BFF 产物 | `bff` | 全部 6 个 |
+| **`npm run start:prod`** | **启动生产产物** | `bff` | 仅 vault + dev |
+| `npm run test` | vitest 单测 | — | — |
+
+### 本地生产部署（无 Docker）
+
+后端目前只具备「存记忆/查记忆」能力，本地非容器部署建议直接用生产精简模式：
+
+```bash
+# 1. 配置后端地址（如有真实 NovaMem 服务）
+cp .env.example .env.local
+echo "NOVAMEM_BASE_URL=http://localhost:8001" >> .env.local
+
+# 2. 构建（注入 ENABLED_MODULES=vault,dev 到 client bundle）
+npm run build:prod
+
+# 3. 启动（默认 :3000；可通过 PORT=4000 npm run start:prod 自定义）
+npm run start:prod
+```
+
+启动后顶部导航只剩「记忆金库」+「开发者中心」；直接访问 `/basic/analytics` 等会 308 重定向到 `/basic/vault`。
+
+完整本地与容器部署指南见 **[`docs/DEPLOYMENT.md`](./docs/DEPLOYMENT.md)**。
 
 ### 接入真实后端
 
