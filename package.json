@@ -16,6 +16,8 @@
     "start": "next start",
     "start:bff": "cross-env NEXT_PUBLIC_DATA_MODE=bff next start",
     "start:live": "cross-env NEXT_PUBLIC_DATA_MODE=live next start",
+    "start:prod": "cross-env NEXT_PUBLIC_DATA_MODE=bff NEXT_PUBLIC_ENABLED_MODULES=vault,dev next start",
+    "build:prod": "cross-env NEXT_PUBLIC_DATA_MODE=bff NEXT_PUBLIC_ENABLED_MODULES=vault,dev next build",
     "lint": "next lint",
     "test": "vitest run",
     "test:watch": "vitest",

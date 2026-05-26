@@ -18,10 +18,9 @@ export const MOCK_THROUGHPUT = series(820); // QPS
 export const MOCK_LATENCY = series(42);     // ms
 
 export const MOCK_CATEGORY_PIE = [
-  { name: '事实记忆', value: 38, color: '#0071E3' },
-  { name: '语义记忆', value: 27, color: '#5AC8FA' },
-  { name: '画像规则', value: 22, color: '#FF9F0A' },
-  { name: '情景记忆', value: 13, color: '#34C759' },
+  { name: '语义记忆', value: 56, color: '#0071E3' },
+  { name: '画像规则', value: 28, color: '#FF9F0A' },
+  { name: '情景记忆', value: 16, color: '#34C759' },
 ];
 
 export const MOCK_NODE_HEALTH = [

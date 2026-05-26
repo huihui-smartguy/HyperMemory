@@ -51,14 +51,15 @@ export interface NMRecallLog {
 
 /* -------- 转换函数 -------- */
 
+// 后端 lifecycle kind → 前端语义分类。
+// 注意：'事实记忆' 已移除（真实后端不存在该分类）。'active' 默认归入 '语义记忆'。
 const KIND_TO_CATEGORY: Record<string, MemoryCategory> = {
-  active: '事实记忆',
-  stale: '情景记忆',
+  active: '语义记忆',
   archived: '语义记忆',
+  stale: '情景记忆',
 };
 
 const SEMANTIC_TO_CATEGORY: Record<string, MemoryCategory> = {
-  事实记忆: '事实记忆',
   语义记忆: '语义记忆',
   画像规则: '画像规则',
   情景记忆: '情景记忆',
@@ -87,15 +88,19 @@ export function recallToMemoryRecord(
   const category: MemoryCategory =
     (mem.semantic_category && SEMANTIC_TO_CATEGORY[mem.semantic_category]) ||
     KIND_TO_CATEGORY[mem.kind ?? ''] ||
-    '事实记忆';
+    '语义记忆';
+
+  const fullContent = mem.content ?? '';
 
   return {
     id: mem.id,
+    userId: mem.scope?.user_id ?? 'unknown',
     sessionId: mem.scope?.session_id ?? 'unknown',
     agentId: mem.scope?.agent_id ?? 'unknown',
     tenant: tenantDisplayName,
     category,
-    summary: truncate(mem.content ?? '', 200),
+    summary: truncate(fullContent, 200),
+    rawContent: fullContent,
     tags: mem.tags ?? [],
     triggers: scoring.signals ?? [],
     ttlHours: mem.ttl_seconds != null ? Math.round(mem.ttl_seconds / 3600) : 0,

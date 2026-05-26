@@ -9,19 +9,22 @@ import type { MemoryCategory, MemoryRecord } from '@/lib/types';
 
 const CATEGORIES: ('全部' | MemoryCategory)[] = [
   '全部',
-  '事实记忆',
   '语义记忆',
   '画像规则',
   '情景记忆',
 ];
 
+const PAGE_SIZE = 50;
+
 const variantForCategory = (c: MemoryCategory) =>
-  c === '画像规则' ? 'accent' : c === '语义记忆' ? 'success' : c === '情景记忆' ? 'warn' : 'default';
+  c === '画像规则' ? 'accent' : c === '语义记忆' ? 'success' : 'warn';
 
 export function VaultExplorer() {
   const [q, setQ] = useState('');
   const [category, setCategory] = useState<'全部' | MemoryCategory>('全部');
   const [agent, setAgent] = useState<string>('全部');
+  const [userIdFilter, setUserIdFilter] = useState('');
+  const [page, setPage] = useState(1);
   const [active, setActive] = useState<MemoryRecord | null>(null);
   const [isMac, setIsMac] = useState(false);
   const inputRef = useRef<HTMLInputElement>(null);
@@ -46,45 +49,80 @@ export function VaultExplorer() {
     return () => window.removeEventListener('keydown', onKey);
   }, []);
 
+  // 任何筛选条件变化时重置到第 1 页
+  useEffect(() => {
+    setPage(1);
+  }, [q, category, agent, userIdFilter]);
+
   // Agent 列表始终基于 mock 静态值（live 模式下应改为 useAgents() hook）
   const agents = useMemo(
     () => ['全部', ...Array.from(new Set(MOCK_MEMORIES.map((m) => m.agentId)))],
     [],
   );
 
-  // 走数据层 hook：mock 模式返回本地过滤；bff/live 模式发起 REST 请求
-  const { data: envelope, isLoading, error } = useVaultMemories({ q, category, agent });
-  const filtered = envelope?.data?.items ?? [];
+  // 走数据层 hook（带分页）；mock 模式本地分页；bff/live 模式由 BFF 处理
+  const { data: envelope, isLoading, error } = useVaultMemories({
+    q,
+    category,
+    agent,
+    userId: userIdFilter.trim() || undefined,
+    page,
+    pageSize: PAGE_SIZE,
+  });
+  const items = envelope?.data?.items ?? [];
+  const total = envelope?.data?.total ?? 0;
+  const totalPages = Math.max(1, Math.ceil(total / PAGE_SIZE));
 
   return (
     <div className="mx-auto max-w-7xl px-6">
-      {/* Spotlight 搜索 */}
-      <div className="hm-card p-1.5 mb-6 flex items-center gap-2 shadow-floating">
-        <span className="pl-4 pr-1 hm-subtle">⌕</span>
-        <input
-          ref={inputRef}
-          value={q}
-          onChange={(e) => setQ(e.target.value)}
-          placeholder="搜索记忆 · 标签 · 触发场景 · Session ID …"
-          className="flex-1 bg-transparent outline-none text-[15px] py-3 placeholder:text-ink-tertiary"
-        />
-        <kbd
-          className="hm-chip mr-3 font-medium gap-1"
-          title={isMac ? '⌘ + K · 聚焦搜索' : 'Ctrl + K · 聚焦搜索'}
-        >
-          {isMac ? (
-            <>
-              <span aria-label="Command">⌘</span>
-              <span>K</span>
-            </>
-          ) : (
-            <>
-              <span aria-label="Ctrl">Ctrl</span>
-              <span className="opacity-50">+</span>
-              <span>K</span>
-            </>
+      {/* Spotlight 搜索 + user_id 过滤器 */}
+      <div className="mb-6 flex items-stretch gap-3">
+        <div className="hm-card p-1.5 flex-1 flex items-center gap-2 shadow-floating">
+          <span className="pl-4 pr-1 hm-subtle">⌕</span>
+          <input
+            ref={inputRef}
+            value={q}
+            onChange={(e) => setQ(e.target.value)}
+            placeholder="搜索记忆 · 标签 · 触发场景 · Session ID …"
+            className="flex-1 bg-transparent outline-none text-[15px] py-3 placeholder:text-ink-tertiary"
+          />
+          <kbd
+            className="hm-chip mr-3 font-medium gap-1"
+            title={isMac ? '⌘ + K · 聚焦搜索' : 'Ctrl + K · 聚焦搜索'}
+          >
+            {isMac ? (
+              <>
+                <span aria-label="Command">⌘</span>
+                <span>K</span>
+              </>
+            ) : (
+              <>
+                <span aria-label="Ctrl">Ctrl</span>
+                <span className="opacity-50">+</span>
+                <span>K</span>
+              </>
+            )}
+          </kbd>
+        </div>
+        <div className="hm-card flex items-center gap-2 px-3 shadow-floating w-64">
+          <span className="hm-subtle text-[12px]">user_id</span>
+          <input
+            value={userIdFilter}
+            onChange={(e) => setUserIdFilter(e.target.value)}
+            placeholder="例如：u_42891"
+            className="flex-1 bg-transparent outline-none text-[13.5px] font-mono py-2.5
+                       placeholder:text-ink-tertiary placeholder:font-sans"
+          />
+          {userIdFilter && (
+            <button
+              onClick={() => setUserIdFilter('')}
+              className="hm-subtle hover:text-ink-primary dark:hover:text-ink-inverse text-[14px]"
+              aria-label="清除 user_id"
+            >
+              ✕
+            </button>
           )}
-        </kbd>
+        </div>
       </div>
 
       {/* 筛选条 */}
@@ -128,29 +166,33 @@ export function VaultExplorer() {
             <span className="text-signal-danger">接口异常 · 已使用空集合</span>
           )}
           <span>
-            共 <b className="text-ink-primary dark:text-ink-inverse">{filtered.length}</b> 条记忆
+            共 <b className="text-ink-primary dark:text-ink-inverse">{total}</b> 条记忆
           </span>
         </div>
       </div>
 
       {/* 数据网格 */}
       <div className="hm-card overflow-hidden">
-        <div className="grid grid-cols-[120px_1fr_220px_140px_90px] px-6 py-3 text-[11.5px] uppercase tracking-[0.16em] hm-subtle border-b hm-hairline">
+        <div className="grid grid-cols-[110px_110px_1fr_220px_140px_80px] px-6 py-3 text-[11.5px] uppercase tracking-[0.16em] hm-subtle border-b hm-hairline">
           <span>类别</span>
+          <span>User ID</span>
           <span>摘要</span>
           <span>标签 / 触发</span>
           <span>会话 · 时间</span>
           <span className="text-right">置信</span>
         </div>
         <div className="divide-y hm-hairline">
-          {filtered.map((m) => (
+          {items.map((m) => (
             <button
               key={m.id}
               onClick={() => setActive(m)}
-              className="w-full text-left grid grid-cols-[120px_1fr_220px_140px_90px] px-6 py-4 hover:bg-black/[0.025] dark:hover:bg-white/[0.04] transition-colors items-start"
+              className="w-full text-left grid grid-cols-[110px_110px_1fr_220px_140px_80px] px-6 py-4 hover:bg-black/[0.025] dark:hover:bg-white/[0.04] transition-colors items-start"
             >
               <div className="pt-0.5">
                 <Chip variant={variantForCategory(m.category)}>{m.category}</Chip>
+              </div>
+              <div className="pr-4 pt-0.5 text-[12px] font-mono hm-subtle truncate">
+                {m.userId}
               </div>
               <div className="pr-4 text-[14px] leading-relaxed">{m.summary}</div>
               <div className="flex flex-wrap gap-1.5 pr-4">
@@ -173,15 +215,43 @@ export function VaultExplorer() {
               </div>
             </button>
           ))}
-          {!filtered.length && !isLoading && (
+          {!items.length && !isLoading && (
             <div className="py-16 text-center hm-subtle text-[14px]">
               {error ? '接口返回异常，请检查 Go 网关或回退至 mock 模式。' : '没有匹配的记忆。'}
             </div>
           )}
-          {!filtered.length && isLoading && (
+          {!items.length && isLoading && (
             <div className="py-16 text-center hm-subtle text-[14px]">正在从数据源拉取记忆…</div>
           )}
         </div>
+
+        {/* 分页 footer */}
+        {total > 0 && (
+          <div className="flex items-center justify-between px-6 py-3 border-t hm-hairline text-[12px]">
+            <span className="hm-subtle tabular-nums">
+              {(page - 1) * PAGE_SIZE + 1}–{Math.min(page * PAGE_SIZE, total)} / {total}
+            </span>
+            <div className="flex items-center gap-2">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page <= 1}
+                className="hm-btn-ghost h-7 px-3 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                上一页
+              </button>
+              <span className="tabular-nums hm-subtle px-2">
+                第 <b className="text-ink-primary dark:text-ink-inverse">{page}</b> / {totalPages} 页
+              </span>
+              <button
+                onClick={() => setPage((p) => p + 1)}
+                disabled={page >= totalPages}
+                className="hm-btn-ghost h-7 px-3 disabled:opacity-30 disabled:cursor-not-allowed"
+              >
+                下一页
+              </button>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* 详情侧滑 */}
@@ -210,6 +280,7 @@ export function VaultExplorer() {
             </header>
             <div className="px-6 py-6 space-y-6 text-[14px] leading-relaxed">
               <p>{active.summary}</p>
+
               <Section label="标签">
                 <div className="flex flex-wrap gap-1.5">
                   {active.tags.map((t) => (
@@ -217,6 +288,7 @@ export function VaultExplorer() {
                   ))}
                 </div>
               </Section>
+
               <Section label="触发场景">
                 <div className="flex flex-wrap gap-1.5">
                   {active.triggers.map((t) => (
@@ -226,7 +298,24 @@ export function VaultExplorer() {
                   ))}
                 </div>
               </Section>
+
+              {/* 原始记忆内容（来自 backend memory.content 全文） */}
+              <Section label="原始记忆内容">
+                <pre
+                  className="font-mono text-[12px] leading-relaxed
+                             bg-black/[0.04] dark:bg-white/[0.05]
+                             rounded-xl p-4 max-h-72 overflow-y-auto whitespace-pre-wrap break-words
+                             border hm-hairline"
+                >
+                  {active.rawContent || active.summary}
+                </pre>
+                <p className="mt-2 text-[11px] hm-subtle">
+                  注：真实「原始对话文件」需后端补端点 `GET /v1/memories/{'{id}'}/raw`；当前为 Milvus 中存储的处理后记忆全文。
+                </p>
+              </Section>
+
               <div className="grid grid-cols-2 gap-4 text-[12.5px] hm-subtle">
+                <Kv k="User ID" v={active.userId} mono />
                 <Kv k="Agent" v={active.agentId} />
                 <Kv k="租户" v={active.tenant} />
                 <Kv k="Session" v={active.sessionId} mono />

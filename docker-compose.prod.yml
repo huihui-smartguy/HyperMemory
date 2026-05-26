@@ -17,7 +17,13 @@
 
 services:
   novamem-ui:
-    image: novamem-ui:latest   # 使用预构建镜像，不在生产实时 build
+    image: novamem-ui:latest   # 预构建镜像。本地若无，会按 build 配置现场构建。
+    build:
+      context: .
+      args:
+        NEXT_PUBLIC_DATA_MODE: bff
+        # 生产模式仅暴露记忆金库 + 开发者中心；其它模块在导航和路由层屏蔽。
+        NEXT_PUBLIC_ENABLED_MODULES: "vault,dev"
     container_name: novamem-ui-prod
     ports:
       - "3000:3000"

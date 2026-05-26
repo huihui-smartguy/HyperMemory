@@ -136,10 +136,12 @@ grep -rn "BFF_USE_MOCK_BACKEND" .next/static
 **P1（提升真实度）**：
 - `GET /v1/memories?scope=&limit=&cursor=` 列表查询
 - `GET /v1/memories/{id}` 单条详情
+- `GET /v1/memories/{id}/raw` 原始对话文件（前端「原始记忆内容」侧滑面板需要）
 - `GET /v1/admin/stats` 综合指标
+- 真实分页：`POST /v1/recall` 增加 `cursor` / `offset` 参数，让前端跨页翻
 
 **P2（产品概念落地）**：
-- `MemoryItem.semantic_category` 字段对齐前端 4 分类
+- `MemoryItem.semantic_category` 字段对齐前端 3 分类（语义记忆 / 画像规则 / 情景记忆）
 - WebSocket/SSE 推送 evolution 事件
 - 实现 `graph_db/` 模块
 
@@ -257,8 +259,9 @@ NEXT_PUBLIC_MOCK_LATENCY_MS=180
 | Param | Type | 必选 | 说明 |
 | --- | --- | --- | --- |
 | `q` | string | 否 | 关键词，跨 summary/tags/triggers/sessionId 模糊匹配 |
-| `category` | enum | 否 | `事实记忆 \| 语义记忆 \| 画像规则 \| 情景记忆` |
+| `category` | enum | 否 | `语义记忆 \| 画像规则 \| 情景记忆` |
 | `agent_id` | string | 否 | 按 Agent 维度过滤 |
+| `user_id` | string | 否 | 精确按 user_id 过滤；非空时覆盖 tenant 派生的默认 user_id |
 | `page` | int | 否 | 从 1 开始，默认 1 |
 | `page_size` | int | 否 | 默认 50，最大 200 |
 
@@ -274,11 +277,13 @@ NEXT_PUBLIC_MOCK_LATENCY_MS=180
 
 interface MemoryRecord {
   id: string;             // 'mem_8f02a1'
+  userId: string;         // 'u_42891' · 来自 backend scope.user_id
   sessionId: string;      // 'sess_2026-05-22-0091'
   agentId: string;        // 'agent-101'
   tenant: string;
-  category: '事实记忆' | '语义记忆' | '画像规则' | '情景记忆';
-  summary: string;
+  category: '语义记忆' | '画像规则' | '情景记忆';
+  summary: string;        // 截断 200 字 · 网格展示
+  rawContent: string;     // backend content 全文 · 详情面板展示
   tags: string[];
   triggers: string[];
   ttlHours: number;

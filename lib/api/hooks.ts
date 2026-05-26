@@ -48,6 +48,8 @@ export interface VaultQuery {
   q?: string;
   category?: '全部' | MemoryCategory;
   agent?: string;
+  /** 精确按 user_id 过滤；非空时覆盖 tenant 派生的默认 user_id（BFF 行为）。 */
+  userId?: string;
   page?: number;
   pageSize?: number;
 }
@@ -61,9 +63,11 @@ export interface VaultResponse {
 
 function filterMemoriesLocal(list: MemoryRecord[], query: VaultQuery): MemoryRecord[] {
   const needle = (query.q ?? '').trim().toLowerCase();
+  const userIdNeedle = (query.userId ?? '').trim().toLowerCase();
   return list.filter((m) => {
     if (query.category && query.category !== '全部' && m.category !== query.category) return false;
     if (query.agent && query.agent !== '全部' && m.agentId !== query.agent) return false;
+    if (userIdNeedle && !m.userId.toLowerCase().includes(userIdNeedle)) return false;
     if (!needle) return true;
     return (
       m.summary.toLowerCase().includes(needle) ||
@@ -79,6 +83,7 @@ export function useVaultMemories(query: VaultQuery = {}) {
   if (query.q) search.set('q', query.q);
   if (query.category && query.category !== '全部') search.set('category', query.category);
   if (query.agent && query.agent !== '全部') search.set('agent_id', query.agent);
+  if (query.userId) search.set('user_id', query.userId);
   if (query.page) search.set('page', String(query.page));
   if (query.pageSize) search.set('page_size', String(query.pageSize));
   const netKey = `${ENDPOINTS.memory.vault}?${search.toString()}`;
@@ -89,8 +94,14 @@ export function useVaultMemories(query: VaultQuery = {}) {
     USES_NETWORK
       ? (k: string) => swrFetcherWithMeta<VaultResponse>(k)
       : () => {
-          const items = filterMemoriesLocal(MOCK_MEMORIES, query);
-          return mockDelayed(mockEnvelope({ items, total: items.length }));
+          const all = filterMemoriesLocal(MOCK_MEMORIES, query);
+          const page = Math.max(query.page ?? 1, 1);
+          const pageSize = Math.min(query.pageSize ?? 50, 200);
+          const start = (page - 1) * pageSize;
+          const items = all.slice(start, start + pageSize);
+          return mockDelayed(
+            mockEnvelope({ items, total: all.length, page, page_size: pageSize }),
+          );
         },
     swrConfig,
   );

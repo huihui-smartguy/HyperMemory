@@ -2,20 +2,25 @@
 
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
+import { isModuleEnabled } from '@/lib/features';
 
 interface MegaItem {
   href: string;
   title: string;
   oneLiner: string;
   glyph: string;
+  /** 与 lib/features.ts 中 ModuleKey 一致 */
+  moduleKey: string;
 }
 
 interface MegaGroup {
   key: string;
   label: string;
   href?: string;
+  /** 直跳链接的 group，moduleKey 用于过滤；items 模式下用 item.moduleKey */
+  moduleKey?: string;
   items?: MegaItem[];
 }
 
@@ -29,12 +34,14 @@ const NAV: MegaGroup[] = [
         title: '记忆金库',
         oneLiner: '高密度数据网格 · Spotlight 搜索 · 实体胶囊。',
         glyph: '◍',
+        moduleKey: 'vault',
       },
       {
         href: '/basic/analytics',
         title: '运行大盘',
         oneLiner: 'API 吞吐 · 网关延迟 · 节点健康度。',
         glyph: '◐',
+        moduleKey: 'analytics',
       },
     ],
   },
@@ -47,22 +54,25 @@ const NAV: MegaGroup[] = [
         title: 'Schema 进化车间',
         oneLiner: '辩证推理流 · Diff 视窗 · 人机协同审批。',
         glyph: '◇',
+        moduleKey: 'evolution',
       },
       {
         href: '/advanced/cognitive-graph',
         title: '认知拓扑引擎',
         oneLiner: '记忆全生命周期管道 · 因果图谱编辑。',
         glyph: '◈',
+        moduleKey: 'cognitive-graph',
       },
       {
         href: '/advanced/retrieval-xray',
         title: '召回 X 光机',
         oneLiner: '单次请求溯源 · 瀑布流 · 重排得分。',
         glyph: '◉',
+        moduleKey: 'retrieval-xray',
       },
     ],
   },
-  { key: 'dev', label: '开发者中心', href: '/dev' },
+  { key: 'dev', label: '开发者中心', href: '/dev', moduleKey: 'dev' },
 ];
 
 export function MegaMenu() {
@@ -81,7 +91,21 @@ export function MegaMenu() {
     if (closeTimer.current) clearTimeout(closeTimer.current);
   };
 
-  const activeGroup = NAV.find((g) => g.key === openKey);
+  // 按 NEXT_PUBLIC_ENABLED_MODULES 过滤 NAV：先过滤 items，再丢掉空 group。
+  const visibleNav = useMemo(() => {
+    return NAV
+      .map((g) => {
+        if (g.items) {
+          const items = g.items.filter((it) => isModuleEnabled(it.moduleKey));
+          return items.length ? { ...g, items } : null;
+        }
+        if (g.moduleKey && !isModuleEnabled(g.moduleKey)) return null;
+        return g;
+      })
+      .filter((g): g is MegaGroup => g !== null);
+  }, []);
+
+  const activeGroup = visibleNav.find((g) => g.key === openKey);
 
   const toggleTheme = () => {
     const next = document.documentElement.classList.toggle('dark') ? 'dark' : 'light';
@@ -104,7 +128,7 @@ export function MegaMenu() {
           </Link>
 
           <ul className="flex items-center gap-1">
-            {NAV.map((g) => {
+            {visibleNav.map((g) => {
               const isOpen = openKey === g.key;
               if (g.href) {
                 return (
@@ -160,9 +184,11 @@ export function MegaMenu() {
             >
               ◐
             </button>
-            <Link href="/dev" className="hm-btn-ghost h-9">
-              控制台
-            </Link>
+            {isModuleEnabled('dev') && (
+              <Link href="/dev" className="hm-btn-ghost h-9">
+                控制台
+              </Link>
+            )}
           </div>
         </nav>
       </div>
