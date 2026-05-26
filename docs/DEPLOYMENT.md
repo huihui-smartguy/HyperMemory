@@ -12,7 +12,9 @@
 4. [环境变量说明](#4-环境变量说明)
 5. [构建时 ARG vs 运行时 ENV](#5-构建时-arg-vs-运行时-env)
 6. [健康检查](#6-健康检查)
-7. [常见问题](#7-常见问题)
+6.5. [按模块裁剪（生产精简模式）](#65-按模块裁剪生产精简模式)
+7. [本地非容器部署](#7-本地非容器部署)
+8. [常见问题](#8-常见问题)
 
 ---
 
@@ -247,7 +249,116 @@ NEXT_PUBLIC_ENABLED_MODULES=vault,dev npm run build && npm start
 
 ---
 
-## 7. 常见问题
+## 7. 本地非容器部署
+
+适合裸机 / VM / 自管 PM2 等不使用 Docker 的场景。生产模式（模块开关）在本地完全可用。
+
+### 7.1 三档启动场景
+
+| 场景 | 适用 | 命令链 |
+|------|------|--------|
+| **A · 开发预览（生产配置）** | 临时验证生产模式 UI 但保留热重载 | `npm run dev:prod` |
+| **B · 本地生产部署（推荐）** | 单机长期跑（非容器） | `npm run build:prod && npm run start:prod` |
+| **C · 自定义配置部署** | 需特殊 ENABLED_MODULES 组合 | 见 7.4 |
+
+### 7.2 场景 B · 本地生产部署完整流程
+
+```bash
+# 1) 安装依赖（首次或 lock 文件变更后）
+npm ci
+
+# 2) 配置后端地址（可选）
+cp .env.example .env.local
+# 编辑 .env.local：
+#   NOVAMEM_BASE_URL=http://your-backend-host:8001   # 真实后端
+#   BFF_USE_MOCK_BACKEND=0                            # 0=接真实后端，1=内置 mock
+# 注：NEXT_PUBLIC_ENABLED_MODULES 由 npm run build:prod 注入，无需在 .env.local 设置
+
+# 3) 构建（注入 ENABLED_MODULES=vault,dev 到 client bundle）
+npm run build:prod
+# 产物：.next/   （生产服务器只需要这个目录 + node_modules + package.json + public）
+
+# 4) 启动
+npm run start:prod
+# 默认 :3000；自定义端口：PORT=4000 npm run start:prod
+```
+
+启动后顶部导航只剩「记忆金库」+「开发者中心」；其它路由会 308 重定向到 vault。
+
+### 7.3 后台进程托管（PM2 示例）
+
+```bash
+npm i -g pm2
+
+# 第一次启动
+pm2 start npm --name novamem-ui -- run start:prod
+pm2 save
+pm2 startup     # 让 PM2 开机自启
+
+# 查看 / 重启 / 停止
+pm2 status
+pm2 logs novamem-ui
+pm2 restart novamem-ui
+pm2 stop novamem-ui
+```
+
+### 7.4 自定义 ENABLED_MODULES 部署
+
+如果需要的模块组合既不是 `vault,dev`（生产默认）也不是全部，直接传环境变量到 build/start：
+
+```bash
+# 比如运营场景：仅 vault + analytics
+NEXT_PUBLIC_DATA_MODE=bff \
+NEXT_PUBLIC_ENABLED_MODULES=vault,analytics \
+npm run build
+
+NEXT_PUBLIC_DATA_MODE=bff \
+NEXT_PUBLIC_ENABLED_MODULES=vault,analytics \
+npm start
+```
+
+**关键点**：`NEXT_PUBLIC_ENABLED_MODULES` 在 `next build` 时被静态写入 JS bundle，`next start` 时也需要传一致的值给 `middleware.ts`。同一对值必须出现在 build 和 start 两步，否则前端导航和路由中间件行为会不一致。
+
+### 7.5 反向代理（Nginx 示例）
+
+```nginx
+server {
+    listen 80;
+    server_name novamem.example.com;
+
+    location / {
+        proxy_pass http://127.0.0.1:3000;
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        # SSE 支持（Schema 进化车间等流式接口）
+        proxy_buffering off;
+        proxy_cache off;
+        proxy_read_timeout 300s;
+    }
+}
+```
+
+### 7.6 验证
+
+```bash
+# 健康检查
+curl http://localhost:3000/api/v1/health
+
+# 模块开关验证（生产模式下分析模块应 308）
+curl -sI http://localhost:3000/basic/analytics | head -2
+# 期望：HTTP/1.1 308 Permanent Redirect
+#       location: /basic/vault
+
+# 主页应只显示启用的模块
+curl -s http://localhost:3000 | grep -c "进入 →"
+# 期望：与启用模块数一致（vault,dev → 2）
+```
+
+---
+
+## 8. 常见问题
 
 ### Q: 端口 3000 被占用
 
